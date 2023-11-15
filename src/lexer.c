@@ -46,6 +46,53 @@ bool is_token_binops(Token_Type type)
     return _token_info[type].is_binary_op_token;
 }
 
+size_t lexer_cache_count(Lexer *lex)
+{
+    if(lex->cache.carry) {
+        return MAXIMUM_LEXER_CACHE_DATA + lex->cache.head - lex->cache.tail;
+    } else {
+        return lex->cache.head - lex->cache.tail;
+    }
+}
+#include <stdio.h>
+bool lexer_cache_get(Lexer *lex, size_t i, Token *result)
+{
+    if(lexer_cache_count(lex) < 1) {
+        return false;
+    }
+    *result = lex->cache.data[lex->cache.tail + i % MAXIMUM_LEXER_CACHE_DATA];
+    return true;
+}
+
+bool lexer_cache_push(Lexer *lex, Token token)
+{
+    lex->cache.data[lex->cache.head] = token;
+    lex->cache.head = lex->cache.head + 1;
+    if(lex->cache.head >= MAXIMUM_LEXER_CACHE_DATA) {
+        lex->cache.head = 0;
+        lex->cache.carry = true;
+    }
+    if(lex->cache.head == lex->cache.tail) {
+        return false; // Maximum capacity exceeded
+    }
+
+    return true;
+}
+
+bool lexer_cache_shift(Lexer *lex, Token *token)
+{
+    *token = lex->cache.data[lex->cache.tail];
+    lex->cache.tail = lex->cache.tail + 1;
+    if(lex->cache.tail >= MAXIMUM_LEXER_CACHE_DATA) {
+        if(!lex->cache.carry) {
+            return false; // This is when the count is 0
+        }
+        lex->cache.tail = 0;
+        lex->cache.carry = false;
+    }
+    return true;
+}
+
 bool advance_lexer(Lexer *lex)
 {
     if(lex->i >= lex->source.count) {
@@ -59,15 +106,14 @@ bool advance_lexer(Lexer *lex)
 
 void cache_token(Lexer *lex, Token_Type type, String_View value)
 {
-    Token *cache = &lex->cache.data[lex->cache.head];
-    lex->cache.head = (lex->cache.head + 1) % MAXIMUM_LEXER_CACHE_DATA;
-    if(lex->cache.head == lex->cache.tail) {
-        fatal("There's too many tokens to be cached");
+    Token cached = {0};
+    cached.type = type;
+    cached.value = value;
+    cached.loc.col = lex->loc.col - value.count;
+    cached.loc.row = lex->loc.row;
+    if(!lexer_cache_push(lex, cached)) {
+        fatal("There's too many tokens to be cached (tail = %zu, head = %zu)", lex->cache.head, lex->cache.tail);
     }
-    cache->type = type;
-    cache->value = value;
-    cache->loc.col = lex->loc.col - value.count;
-    cache->loc.row = lex->loc.row;
 }
 
 bool cache_next_token(Lexer *lex)
@@ -245,41 +291,27 @@ bool cache_next_token(Lexer *lex)
     return true;
 }
 
-bool peek_token(Lexer *lex, Token *token, uint32_t offset)
+bool peek_token(Lexer *lex, Token *token, size_t index)
 {
-    if(!lex || !token || offset == 0) {
-        return false;
+    if(!lex || !token) return false;
+    if(lex->i + 1 >= lex->source.count) return false;
+
+    if(index >= lexer_cache_count(lex)) {
+        while(index >= lexer_cache_count(lex)) {
+            if(!cache_next_token(lex)) return false;
+        }
     }
 
-    if(lex->i + offset >= lex->source.count) {
-        return false;
-    }
-
-    for(uint32_t i = offset; i > 0; --i) {
-        cache_next_token(lex);
-    }
-
-    size_t index = (lex->cache.tail + offset - 1) % MAXIMUM_LEXER_CACHE_DATA;
-    *token = lex->cache.data[index];
-
-    return true;
+    return lexer_cache_get(lex, index, token);
 }
 
 bool next_token(Lexer *lex, Token *token)
 {
     if(!lex || !token) return false;
-
-    if(lex->cache.head != lex->cache.tail) {
-        *token = lex->cache.data[lex->cache.tail];
-        lex->cache.tail = (lex->cache.tail + 1) % MAXIMUM_LEXER_CACHE_DATA;
-        return true;
-    } else if(cache_next_token(lex)) {
-        lex->cache.head -= 1;
-        *token = lex->cache.data[lex->cache.tail];
-        return true;
-    } else {
-        return false;
+    if(lexer_cache_count(lex) < 1) {
+        if(!cache_next_token(lex)) return false;
     }
+    return lexer_cache_shift(lex, token);
 }
 
 bool init_lexer(Lexer *lex, String_View source)
@@ -305,7 +337,7 @@ Token expect_token(Lexer *lex, Token_Type type)
         compiler_trap(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
     }
     if(token.type != type) {
-        compiler_trap(lex->loc, "Expecting token `%s` found `%s` at tokenization level", _token_info[type].name, _token_info[token.type].name);
+        compiler_trap(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
     }
     return token;
 }

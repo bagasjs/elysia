@@ -79,7 +79,7 @@ struct Expr_Binary_Op {
 
 typedef enum {
     STMT_UNKNOWN = 0,
-    STMT_RETURN, STMT_IF, STMT_WHILE, STMT_FOR, STMT_VAR_ASSIGN, STMT_VAR_DEF, STMT_EXPR
+    STMT_RETURN, STMT_IF, STMT_WHILE, STMT_FOR, STMT_VAR_ASSIGN, STMT_VAR_DEF, STMT_VAR_INIT, STMT_EXPR
 } Stmt_Type;
 
 typedef struct Stmt Stmt;
@@ -94,6 +94,7 @@ struct Stmt_Return {
 
 union Stmt_As {
     Stmt_Return _return;
+    Expr expr;
 };
 
 struct Stmt {

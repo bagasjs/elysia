@@ -18,16 +18,13 @@ Module parse_module(Lexer *lex)
 {
     Module module = {0};
     Token token = {0};
-    while(peek_token(lex, &token, 1)) {
-        if(token.type != TOKEN_NAME) {
-            dump_token(token);
-            compiler_trap(token.loc, "Expecting token `name` but got `"SV_FMT"`", SV_ARGV(token.value));
-        }
+    while(peek_token(lex, &token, 0)) {
+        expect_token(lex, TOKEN_NAME);
 
         if(sv_eq(token.value, FUNCTION_KEYWORD)) {
             module.main = parse_func_def(lex);
         } else {
-            compiler_trap(token.loc, "Expecting keyword `%s` for function declaration found `"SV_FMT"`", FUNCTION_KEYWORD, SV_ARGV(token.value));
+            compiler_trap(token.loc, "Expecting keyword `%s` for function definition but found `"SV_FMT"`", FUNCTION_KEYWORD, SV_ARGV(token.value));
         }
     }
 
@@ -42,7 +39,7 @@ Func_Def parse_func_def(Lexer *lex)
     result.params = parse_func_params(lex);
 
     Token token = {0};
-    if(!peek_token(lex, &token, 1)) {
+    if(!peek_token(lex, &token, 0)) {
         compiler_trap(token.loc, "Expecting function body or return type of the function but found end of file");
     }
 
@@ -62,7 +59,7 @@ Func_Param_List parse_func_params(Lexer *lex)
     expect_token(lex, TOKEN_LPAREN);
 
     Token token;
-    if(peek_token(lex, &token, 1) && token.type == TOKEN_RPAREN) {
+    if(peek_token(lex, &token, 0) && token.type == TOKEN_RPAREN) {
         next_token(lex, &token);
         return params;
     } else {
@@ -74,12 +71,12 @@ Func_Param_List parse_func_params(Lexer *lex)
         da_append(&params, param);
     }
 
-    if(peek_token(lex, &token, 1) && token.type == TOKEN_RPAREN) {
+    if(peek_token(lex, &token, 0) && token.type == TOKEN_RPAREN) {
         next_token(lex, &token);
         return params;
     }
 
-    while(peek_token(lex, &token, 1) && token.type == TOKEN_COMMA) {
+    while(peek_token(lex, &token, 0) && token.type == TOKEN_COMMA) {
         next_token(lex, &token);
 
         Func_Param param = {0};
@@ -100,11 +97,20 @@ Block parse_block(Lexer *lex)
     expect_token(lex, TOKEN_LCURLY);
 
     Token token = {0};
-    while(peek_token(lex, &token, 1) && token.type != TOKEN_RCURLY) {
+    if(!peek_token(lex, &token, 0)) {
+        compiler_trap(lex->loc, "Expecting a block but reached end of file\n");
+    }
+
+    while(token.type != TOKEN_RCURLY) {
         Stmt stmt = parse_stmt(lex);
         da_append(&result, stmt);
+        if(!peek_token(lex, &token, 0)) {
+            compiler_trap(lex->loc, "Expecting a block but reached end of file\n");
+        }
     }
+    printf("TEST START\n");
     expect_token(lex, TOKEN_RCURLY);
+    printf("TEST END\n");
     return result;
 }
 
@@ -112,7 +118,7 @@ Block parse_block(Lexer *lex)
 Stmt parse_stmt(Lexer *lex)
 {
     Token token = {0};
-    if(!peek_token(lex, &token, 1)) {
+    if(!peek_token(lex, &token, 0)) {
         compiler_trap(lex->loc, "Expecting statement but reached end of file\n");
     }
 
@@ -137,14 +143,12 @@ Stmt parse_stmt(Lexer *lex)
         case TOKEN_INTEGER:
         case TOKEN_FLOAT:
         case TOKEN_STRING:
-        case TOKEN_COMMA:
-        case TOKEN_DOT:
         case TOKEN_LPAREN:
         case TOKEN_RPAREN:
-        case TOKEN_LCURLY:
-        case TOKEN_RCURLY:
-        case TOKEN_SEMICOLON:
             {
+                result.type = STMT_EXPR;
+                result.loc = token.loc;
+                result.as.expr = parse_expr(lex);
             } break;
 
         default:
@@ -153,6 +157,11 @@ Stmt parse_stmt(Lexer *lex)
                 assert(0 && "Unreachable");
             } break;
     }
+
+    if(peek_token(lex, &token, 0) && token.type == TOKEN_SEMICOLON) {
+        expect_token(lex, TOKEN_SEMICOLON);
+    }
+
     return result;
 }
 
@@ -162,11 +171,10 @@ Expr_List parse_func_args(Lexer *lex)
     expect_token(lex, TOKEN_LPAREN);
 
     Token token = {0};
-    while(peek_token(lex, &token, 1) && token.type != TOKEN_RPAREN) {
+    while(peek_token(lex, &token, 0) && token.type != TOKEN_RPAREN) {
         da_append(&list, parse_expr(lex));
         expect_token(lex, TOKEN_COMMA);
     }
-
     expect_token(lex, TOKEN_RPAREN);
     return list;
 }
@@ -174,7 +182,7 @@ Expr_List parse_func_args(Lexer *lex)
 Expr parse_expr(Lexer *lex)
 {
     Token token = {0};
-    if(!peek_token(lex, &token, 1)) {
+    if(!peek_token(lex, &token, 0)) {
         compiler_trap(lex->loc, "Expecting expression but got end of file\n");
     }
 
@@ -200,7 +208,7 @@ Expr parse_expr(Lexer *lex)
                     var_read.as.var_read.loc = token.loc;
 
                     Token ntoken = {0};
-                    peek_token(lex, &ntoken, 1);
+                    peek_token(lex, &ntoken, 0);
                     if(ntoken.type == TOKEN_LPAREN) {
                         result.type = EXPR_FUNCALL;
                         result.loc = token.loc;
@@ -225,24 +233,26 @@ Expr parse_expr(Lexer *lex)
             } break;
         case TOKEN_INTEGER:
             {
-                next_token(lex, &token);
+                expect_token(lex, TOKEN_INTEGER);
                 Expr left = {0};
                 left.loc = token.loc;
                 left.type = EXPR_INTEGER_LITERAL;
                 left.as.literal_int = sv_to_int(token.value);
 
                 Token ntoken = {0};
-                peek_token(lex, &ntoken, 1);
-                if(binary_op_type_from_token_type(ntoken.type) != BINARY_OP_UNKNOWN) {
-                    next_token(lex, &ntoken);
+                peek_token(lex, &ntoken, 0);
+                dump_token(ntoken);
+                Binary_Op_Type op_type = binary_op_type_from_token_type(ntoken.type);
+                if(op_type != BINARY_OP_UNKNOWN) {
+                    expect_token(lex, ntoken.type);
                     result.loc = token.loc;
                     result.type = EXPR_BINARY_OP;
                     result.as.binop = context_alloc(sizeof(struct Expr_Binary_Op));
                     if(!result.as.binop) {
-                        fatal("Failed to allocate for expression: Buy more RAM LOL");
+                        fatal("Failed to allocate for binary op expression: Buy more RAM LOL");
                     }
                     result.as.binop->loc = ntoken.loc;
-                    result.as.binop->type = binary_op_type_from_token_type(ntoken.type);
+                    result.as.binop->type = op_type;
                     result.as.binop->left = left;
                     result.as.binop->right = parse_expr(lex);
                 } else {

@@ -61,12 +61,19 @@ typedef struct {
     struct {
         Token data[MAXIMUM_LEXER_CACHE_DATA];
         size_t head, tail;
+        bool carry;
     } cache;
 } Lexer;
 
+size_t lexer_cache_count(Lexer *lex);
+bool lexer_cache_get(Lexer *lex, size_t i, Token *result);
+bool lexer_cache_push(Lexer *lex, Token token);
+bool lexer_cache_shift(Lexer *lex, Token *token);
+
 bool init_lexer(Lexer *lex, String_View source);
-bool peek_token(Lexer *lex, Token *token, uint32_t offset); // offset=0 will give the current token
+bool peek_token(Lexer *lex, Token *token, size_t index);
 bool next_token(Lexer *lex, Token *token);
+bool cache_next_token(Lexer *lex);
 Token expect_token(Lexer *lex, Token_Type type);
 Token expect_keyword(Lexer *lex, String_View name);
 void dump_token(Token token);
