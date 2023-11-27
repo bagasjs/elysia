@@ -13,18 +13,22 @@ String_View IF_KEYWORD = SV_STATIC("if");
 String_View ELSE_KEYWORD = SV_STATIC("else");
 String_View WHILE_KEYWORD = SV_STATIC("while");
 String_View BREAK_KEYWORD = SV_STATIC("break");
+String_View VAR_KEYWORD = SV_STATIC("var");
+String_View CONST_KEYWORD = SV_STATIC("const");
 
 Module parse_module(Lexer *lex)
 {
     Module module = {0};
     Token token = {0};
     while(peek_token(lex, &token, 0)) {
-        expect_token(lex, TOKEN_NAME);
+        if(token.type != TOKEN_NAME) {
+            compiler_trap(token.loc, "Expecting token `name` but got `"SV_FMT"`", SV_ARGV(token.value));
+        }
 
         if(sv_eq(token.value, FUNCTION_KEYWORD)) {
             module.main = parse_func_def(lex);
         } else {
-            compiler_trap(token.loc, "Expecting keyword `%s` for function definition but found `"SV_FMT"`", FUNCTION_KEYWORD, SV_ARGV(token.value));
+            compiler_trap(token.loc, "Expecting keyword `%s` for function definition found `"SV_FMT"`", FUNCTION_KEYWORD, SV_ARGV(token.value));
         }
     }
 
@@ -108,9 +112,7 @@ Block parse_block(Lexer *lex)
             compiler_trap(lex->loc, "Expecting a block but reached end of file\n");
         }
     }
-    printf("TEST START\n");
     expect_token(lex, TOKEN_RCURLY);
-    printf("TEST END\n");
     return result;
 }
 
@@ -128,7 +130,7 @@ Stmt parse_stmt(Lexer *lex)
         case TOKEN_NAME:
             {
                 if(sv_eq(token.value, RETURN_KEYWORD)) {
-                    expect_keyword(lex, RETURN_KEYWORD);
+                    token = expect_keyword(lex, RETURN_KEYWORD);
                     result.loc = token.loc;
                     result.type = STMT_RETURN;
                     result.as._return.loc = token.loc;
@@ -137,6 +139,21 @@ Stmt parse_stmt(Lexer *lex)
                     expect_keyword(lex, IF_KEYWORD);
                     result.loc = token.loc;
                     result.type = STMT_IF;
+                } else if(sv_eq(token.value, VAR_KEYWORD)) {
+                    expect_keyword(lex, VAR_KEYWORD);
+                    String_View name = expect_token(lex, TOKEN_NAME).value;
+                    Token token0 = {0};
+                    if(!next_token(lex, &token0)) {
+                        compiler_trap(lex->loc, "Expecting something after variable name but found nothing");
+                    }
+
+                    if(token0.type == TOKEN_NAME) {
+                        // var x int;  // definition
+                    } else if(token0.type == TOKEN_ASSIGN) {
+                        // var x = 10; // initialization
+                    } else {
+                        compiler_trap(token.loc, "Expecting this line to be either variable defintion or variable initialization");
+                    }
                 } else {
                 }
             } break;
@@ -231,9 +248,10 @@ Expr parse_expr(Lexer *lex)
                     }
                 }
             } break;
+
         case TOKEN_INTEGER:
             {
-                expect_token(lex, TOKEN_INTEGER);
+                token = expect_token(lex, TOKEN_INTEGER);
                 Expr left = {0};
                 left.loc = token.loc;
                 left.type = EXPR_INTEGER_LITERAL;
@@ -241,10 +259,10 @@ Expr parse_expr(Lexer *lex)
 
                 Token ntoken = {0};
                 peek_token(lex, &ntoken, 0);
-                dump_token(ntoken);
                 Binary_Op_Type op_type = binary_op_type_from_token_type(ntoken.type);
+
                 if(op_type != BINARY_OP_UNKNOWN) {
-                    expect_token(lex, ntoken.type);
+                    token = expect_token(lex, ntoken.type);
                     result.loc = token.loc;
                     result.type = EXPR_BINARY_OP;
                     result.as.binop = context_alloc(sizeof(struct Expr_Binary_Op));

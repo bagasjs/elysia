@@ -74,9 +74,11 @@ bool init_lexer(Lexer *lex, String_View source);
 bool peek_token(Lexer *lex, Token *token, size_t index);
 bool next_token(Lexer *lex, Token *token);
 bool cache_next_token(Lexer *lex);
-Token expect_token(Lexer *lex, Token_Type type);
-Token expect_keyword(Lexer *lex, String_View name);
 void dump_token(Token token);
 bool is_token_binops(Token_Type type);
+Token expect_token(Lexer *lex, Token_Type type);
+Token expect_keyword(Lexer *lex, String_View name);
+Token expect_peeked_token(Lexer *lex, Token_Type type, size_t i);
+Token expect_peeked_keyword(Lexer *lex, String_View name, size_t i);
 
 #endif // LEXER_H_

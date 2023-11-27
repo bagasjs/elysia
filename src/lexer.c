@@ -54,12 +54,14 @@ size_t lexer_cache_count(Lexer *lex)
         return lex->cache.head - lex->cache.tail;
     }
 }
+
 #include <stdio.h>
 bool lexer_cache_get(Lexer *lex, size_t i, Token *result)
 {
     if(lexer_cache_count(lex) < 1) {
         return false;
     }
+
     *result = lex->cache.data[lex->cache.tail + i % MAXIMUM_LEXER_CACHE_DATA];
     return true;
 }
@@ -264,7 +266,7 @@ bool cache_next_token(Lexer *lex)
             {
                 if(__isalpha(lex->cc)) {
                     size_t start = lex->i;
-                    while(__isalnum(lex->cc)) {
+                    while(__isalnum(lex->cc) || lex->cc == '_') {
                         advance_lexer(lex);
                     }
                     cache_token(lex, TOKEN_NAME, sv_slice(lex->source, start, lex->i));
@@ -294,7 +296,6 @@ bool cache_next_token(Lexer *lex)
 bool peek_token(Lexer *lex, Token *token, size_t index)
 {
     if(!lex || !token) return false;
-    if(lex->i + 1 >= lex->source.count) return false;
 
     if(index >= lexer_cache_count(lex)) {
         while(index >= lexer_cache_count(lex)) {
@@ -322,6 +323,8 @@ bool init_lexer(Lexer *lex, String_View source)
     lex->cc = lex->source.data[lex->i];
     lex->cache.head = 0;
     lex->cache.tail = 0;
+    lex->loc.col = 1;
+    lex->loc.row = 1;
     return true;
 }
 
@@ -336,15 +339,40 @@ Token expect_token(Lexer *lex, Token_Type type)
     if(!next_token(lex, &token)) {
         compiler_trap(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
     }
+
     if(token.type != type) {
         compiler_trap(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
     }
+
     return token;
 }
 
 Token expect_keyword(Lexer *lex, String_View name)
 {
     Token token = expect_token(lex, TOKEN_NAME);
+    if(!sv_eq(token.value, name)) {
+        compiler_trap(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
+    }
+    return token;
+}
+
+Token expect_peeked_token(Lexer *lex, Token_Type type, size_t i)
+{
+    Token token = {0};
+    if(!peek_token(lex, &token, i)) {
+        compiler_trap(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
+    }
+
+    if(token.type != type) {
+        compiler_trap(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
+    }
+
+    return token;
+}
+
+Token expect_peeked_keyword(Lexer *lex, String_View name, size_t i)
+{
+    Token token = expect_peeked_token(lex, TOKEN_NAME, i);
     if(!sv_eq(token.value, name)) {
         compiler_trap(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
     }

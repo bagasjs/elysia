@@ -4,9 +4,7 @@
 
 const char *source_data = 
     "fun main() {"
-    "   let name = \"Hello, World\\n\";"
-    "   let pi   = 3.14;"
-    "   let test = 1 + 2 - 3 * 4 / 5;"
+    "   return 1\n"
     "}"
     ;
 
@@ -27,9 +25,16 @@ int main(void)
     }
     dump_token(tok);
 
+
     printf("LOADING ALL TOKEN\n");
-    while(next_token(&lex, &tok)) {
-        dump_token(tok);
+    Token ptok;
+    Token ntok;
+    while(peek_token(&lex, &ptok, 0)) {
+        next_token(&lex, &ntok);
+        if(ptok.type != ntok.type) {
+            dump_token(ptok);
+            dump_token(ntok);
+        }
     }
     return 0;
 }

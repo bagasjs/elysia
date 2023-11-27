@@ -16,10 +16,6 @@ void _compiler_deinit(int code, void *user_ptr)
     arena_free(&COMPILER.arena);
 }
 
-bool not_newline(char ch) {
-    return ch != '\n' || ch != 0;
-}
-
 void compiler_trap(Location loc, const char* fmt, ...)
 {
     fprintf(stderr, "Compilation error at line %zu, position %zu:\n -> ", loc.row, loc.col);
