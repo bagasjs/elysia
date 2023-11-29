@@ -1,0 +1,10 @@
+fun shift(argc i32, argv **char) (i32, **char) {
+    argc = argc - 1;
+    argv = argv + 1;
+
+    return argc, argv // maybe??
+}
+
+fun main(argc i32, argv **char) i32 {
+    return 0;
+}

@@ -139,6 +139,12 @@ Stmt parse_stmt(Lexer *lex)
                     expect_keyword(lex, IF_KEYWORD);
                     result.loc = token.loc;
                     result.type = STMT_IF;
+                    assert(0 && "Not implemented");
+                } else if(sv_eq(token.value, WHILE_KEYWORD)) {
+                    expect_keyword(lex, WHILE_KEYWORD);
+                    result.loc = token.loc;
+                    result.type = STMT_WHILE;
+                    assert(0 && "Not implemented");
                 } else if(sv_eq(token.value, VAR_KEYWORD)) {
                     expect_keyword(lex, VAR_KEYWORD);
                     String_View name = expect_token(lex, TOKEN_NAME).value;
