@@ -1,8 +1,10 @@
-#include "parser.h"
-#include "compiler.h"
-#include "plenary.h"
-#include "lexer.h"
+#include "elysia_parser.h"
+#include "elysia_compiler.h"
+#include "elysia_lexer.h"
+
+#include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 String_View FUNCTION_KEYWORD = SV_STATIC("fun");
 String_View VOID_KEYWORD = SV_STATIC("void");
@@ -16,35 +18,35 @@ String_View BREAK_KEYWORD = SV_STATIC("break");
 String_View VAR_KEYWORD = SV_STATIC("var");
 String_View CONST_KEYWORD = SV_STATIC("const");
 
-Module parse_module(Lexer *lex)
+Module parse_module(Arena *arena, Lexer *lex)
 {
     Module module = {0};
     Token token = {0};
     while(peek_token(lex, &token, 0)) {
         if(token.type != TOKEN_NAME) {
-            compiler_trap(token.loc, "Expecting token `name` but got `"SV_FMT"`", SV_ARGV(token.value));
+            compilation_error(token.loc, "Expecting token `name` but got `"SV_FMT"`", SV_ARGV(token.value));
         }
 
         if(sv_eq(token.value, FUNCTION_KEYWORD)) {
-            module.main = parse_func_def(lex);
+            module.main = parse_func_def(arena, lex);
         } else {
-            compiler_trap(token.loc, "Expecting keyword `%s` for function definition found `"SV_FMT"`", FUNCTION_KEYWORD, SV_ARGV(token.value));
+            compilation_error(token.loc, "Expecting keyword `%s` for function definition found `"SV_FMT"`", FUNCTION_KEYWORD, SV_ARGV(token.value));
         }
     }
 
     return module;
 }
 
-Func_Def parse_func_def(Lexer *lex)
+Func_Def parse_func_def(Arena *arena, Lexer *lex)
 {
     Func_Def result = {0};
     result.loc = expect_keyword(lex, FUNCTION_KEYWORD).loc;
     result.name = expect_token(lex, TOKEN_NAME).value;
-    result.params = parse_func_params(lex);
+    result.params = parse_func_params(arena, lex);
 
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
-        compiler_trap(token.loc, "Expecting function body or return type of the function but found end of file");
+        compilation_error(token.loc, "Expecting function body or return type of the function but found end of file");
     }
 
     if(token.type == TOKEN_NAME) {
@@ -53,11 +55,36 @@ Func_Def parse_func_def(Lexer *lex)
         result.return_type_name = VOID_KEYWORD;
     }
 
-    result.body = parse_block(lex);
+    result.body = parse_block(arena, lex);
     return result;
 }
 
-Func_Param_List parse_func_params(Lexer *lex)
+
+Parsed_Data_Type parse_data_type(Arena *arena, Lexer *lex)
+{
+    expect_token(lex, TOKEN_COLON);
+    Parsed_Data_Type result = {0};
+    Token token;
+    if(peek_token(lex, &token, 0) && token.type == TOKEN_ASTERISK) {
+        expect_token(lex, TOKEN_ASTERISK);
+        result.is_ptr = true;
+    }
+
+    token = expect_token(lex, TOKEN_NAME);
+    result.name = token.value;
+    if(peek_token(lex, &token, 0) && token.type == TOKEN_LBRACK) {
+        expect_token(lex, TOKEN_LBRACK);
+        result.is_array = true;
+        if(peek_token(lex, &token, 0) && token.type == TOKEN_INTEGER) {
+            result.array_len = sv_to_int(token.value);
+        }
+        expect_token(lex, TOKEN_RBRACK);
+    }
+
+    return result;
+}
+
+Func_Param_List parse_func_params(Arena *arena, Lexer *lex)
 {
     Func_Param_List params = {0};
     expect_token(lex, TOKEN_LPAREN);
@@ -71,8 +98,8 @@ Func_Param_List parse_func_params(Lexer *lex)
         token = expect_token(lex, TOKEN_NAME);
         param.loc = token.loc;
         param.name = token.value;
-        param.type_name = expect_token(lex, TOKEN_NAME).value;
-        da_append(&params, param);
+        param.type = parse_data_type(arena, lex);
+        push_param_to_param_list(arena, &params, param);
     }
 
     if(peek_token(lex, &token, 0) && token.type == TOKEN_RPAREN) {
@@ -87,29 +114,29 @@ Func_Param_List parse_func_params(Lexer *lex)
         token = expect_token(lex, TOKEN_NAME);
         param.loc = token.loc;
         param.name = token.value;
-        param.type_name = expect_token(lex, TOKEN_NAME).value;
-        da_append(&params, param);
+        param.type = parse_data_type(arena, lex);
+        push_param_to_param_list(arena, &params, param);
     }
 
     expect_token(lex, TOKEN_RPAREN);
     return params;
 }
 
-Block parse_block(Lexer *lex)
+Block parse_block(Arena *arena, Lexer *lex)
 {
     Block result = {0};
     expect_token(lex, TOKEN_LCURLY);
 
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
-        compiler_trap(lex->loc, "Expecting a block but reached end of file\n");
+        compilation_error(lex->loc, "Expecting a block but reached end of file\n");
     }
 
     while(token.type != TOKEN_RCURLY) {
-        Stmt stmt = parse_stmt(lex);
-        da_append(&result, stmt);
+        Stmt stmt = parse_stmt(arena, lex);
+        push_stmt_to_block(arena, &result, stmt);
         if(!peek_token(lex, &token, 0)) {
-            compiler_trap(lex->loc, "Expecting a block but reached end of file\n");
+            compilation_error(lex->loc, "Expecting a block but reached end of file\n");
         }
     }
     expect_token(lex, TOKEN_RCURLY);
@@ -117,11 +144,11 @@ Block parse_block(Lexer *lex)
 }
 
 
-Stmt parse_stmt(Lexer *lex)
+Stmt parse_stmt(Arena *arena, Lexer *lex)
 {
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
-        compiler_trap(lex->loc, "Expecting statement but reached end of file\n");
+        compilation_error(lex->loc, "Expecting statement but reached end of file\n");
     }
 
     Stmt result = {0};
@@ -134,7 +161,7 @@ Stmt parse_stmt(Lexer *lex)
                     result.loc = token.loc;
                     result.type = STMT_RETURN;
                     result.as._return.loc = token.loc;
-                    result.as._return.value = parse_expr(lex);
+                    result.as._return.value = parse_expr(arena, lex);
                 } else if(sv_eq(token.value, IF_KEYWORD)) {
                     expect_keyword(lex, IF_KEYWORD);
                     result.loc = token.loc;
@@ -149,16 +176,37 @@ Stmt parse_stmt(Lexer *lex)
                     expect_keyword(lex, VAR_KEYWORD);
                     String_View name = expect_token(lex, TOKEN_NAME).value;
                     Token token0 = {0};
-                    if(!next_token(lex, &token0)) {
-                        compiler_trap(lex->loc, "Expecting something after variable name but found nothing");
+                    if(!peek_token(lex, &token0, 0)) {
+                        compilation_error(lex->loc, "Expecting something after variable name but found nothing");
                     }
 
-                    if(token0.type == TOKEN_NAME) {
-                        // var x int;  // definition
-                    } else if(token0.type == TOKEN_ASSIGN) {
-                        // var x = 10; // initialization
+                    result.loc = token.loc;
+                    Parsed_Data_Type data_type = {0};
+                    bool has_data_type = false;
+
+                    if(token0.type == TOKEN_COLON) {
+                        has_data_type = true;
+                        data_type = parse_data_type(arena, lex);
+                    }
+
+                    // everything related to data type should have been parsed
+                    if(!next_token(lex, &token0)) {
+                        compilation_error(lex->loc, "Expecting something after variable name but found nothing");
+                    }
+
+                    if(token0.type == TOKEN_ASSIGN) {
+                        result.type = STMT_VAR_INIT;
+                        result.as.var_init.name = name;
+                        if(has_data_type) {
+                            result.as.var_init.type = data_type;
+                        }
+                        result.as.var_init.value = parse_expr(arena, lex);
+                    } else if(has_data_type) {
+                        result.type = STMT_VAR_DEF;
+                        result.as.var_def.name = name;
+                        result.as.var_def.type = data_type;
                     } else {
-                        compiler_trap(token.loc, "Expecting this line to be either variable defintion or variable initialization");
+                        compilation_error(lex->loc, "Expecting defined variable to have any kind of type anotation");
                     }
                 } else {
                 }
@@ -171,12 +219,12 @@ Stmt parse_stmt(Lexer *lex)
             {
                 result.type = STMT_EXPR;
                 result.loc = token.loc;
-                result.as.expr = parse_expr(lex);
+                result.as.expr = parse_expr(arena, lex);
             } break;
 
         default:
             {
-                fprintf(stderr, SV_FMT"\n", SV_ARGV(token.value));
+                fatal(SV_FMT"\n", SV_ARGV(token.value));
                 assert(0 && "Unreachable");
             } break;
     }
@@ -188,25 +236,25 @@ Stmt parse_stmt(Lexer *lex)
     return result;
 }
 
-Expr_List parse_func_args(Lexer *lex)
+Expr_List parse_func_args(Arena *arena, Lexer *lex)
 {
     Expr_List list = {0};
     expect_token(lex, TOKEN_LPAREN);
 
     Token token = {0};
     while(peek_token(lex, &token, 0) && token.type != TOKEN_RPAREN) {
-        da_append(&list, parse_expr(lex));
+        push_expr_to_expr_list(arena, &list, parse_expr(arena, lex));
         expect_token(lex, TOKEN_COMMA);
     }
     expect_token(lex, TOKEN_RPAREN);
     return list;
 }
 
-Expr parse_expr(Lexer *lex)
+Expr parse_expr(Arena *arena, Lexer *lex)
 {
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
-        compiler_trap(lex->loc, "Expecting expression but got end of file\n");
+        compilation_error(lex->loc, "Expecting expression but got end of file\n");
     }
 
     Expr result = {0};
@@ -222,8 +270,8 @@ Expr parse_expr(Lexer *lex)
                     token = expect_keyword(lex, FALSE_KEYWORD);
                     next_token(lex, &token);
                     result.loc = token.loc;
-                    result.type = EXPR_BOOL_LITERAL;
                     result.as.literal_bool = false;
+                    result.type = EXPR_BOOL_LITERAL;
                 } else {
                     token = expect_token(lex, TOKEN_NAME);
                     Expr var_read = {0};
@@ -236,11 +284,11 @@ Expr parse_expr(Lexer *lex)
                         result.type = EXPR_FUNCALL;
                         result.loc = token.loc;
                         result.as.func_call.loc = ntoken.loc;
-                        result.as.func_call.params = parse_func_args(lex);
+                        result.as.func_call.args = parse_func_args(arena, lex);
                     } else if(binary_op_type_from_token_type(ntoken.type) != BINARY_OP_UNKNOWN) {
                         next_token(lex, &ntoken);
                         result.type = EXPR_BINARY_OP;
-                        result.as.binop = context_alloc(sizeof(struct Expr_Binary_Op));
+                        result.as.binop = arena_alloc(arena, sizeof(struct Expr_Binary_Op));
                         if(!result.as.binop) {
                             fatal("Failed to allocate for expression: Buy more RAM LOL");
                         }
@@ -248,7 +296,7 @@ Expr parse_expr(Lexer *lex)
                         result.as.binop->type = binary_op_type_from_token_type(ntoken.type);
                         result.as.binop->loc = ntoken.loc;
                         result.as.binop->left = var_read;
-                        result.as.binop->right = parse_expr(lex);
+                        result.as.binop->right = parse_expr(arena, lex);
                     } else {
                         result = var_read;
                     }
@@ -271,14 +319,14 @@ Expr parse_expr(Lexer *lex)
                     token = expect_token(lex, ntoken.type);
                     result.loc = token.loc;
                     result.type = EXPR_BINARY_OP;
-                    result.as.binop = context_alloc(sizeof(struct Expr_Binary_Op));
+                    result.as.binop = arena_alloc(arena, sizeof(struct Expr_Binary_Op));
                     if(!result.as.binop) {
                         fatal("Failed to allocate for binary op expression: Buy more RAM LOL");
                     }
                     result.as.binop->loc = ntoken.loc;
                     result.as.binop->type = op_type;
                     result.as.binop->left = left;
-                    result.as.binop->right = parse_expr(lex);
+                    result.as.binop->right = parse_expr(arena, lex);
                 } else {
                     result = left;
                 }
@@ -293,7 +341,7 @@ Expr parse_expr(Lexer *lex)
             } break;
         default:
             {
-                fprintf(stderr, "Token: "SV_FMT"\n", SV_ARGV(token.value));
+                fatal("Token: "SV_FMT"\n", SV_ARGV(token.value));
                 assert(0 && "Unreachable: THIS IS IN DEVELOPMENT MODE");
             } break;
     }
@@ -307,7 +355,7 @@ Binary_Op_Type binary_op_type_from_token_type(Token_Type type)
     {
         case TOKEN_ADD:  return BINARY_OP_ADD;
         case TOKEN_SUB:  return BINARY_OP_SUB;
-        case TOKEN_MUL:  return BINARY_OP_MUL;
+        case TOKEN_ASTERISK:  return BINARY_OP_MUL;
         case TOKEN_DIV:  return BINARY_OP_DIV;
         case TOKEN_MOD:  return BINARY_OP_MOD;
         case TOKEN_EQ:   return BINARY_OP_EQ;
@@ -324,3 +372,50 @@ Binary_Op_Type binary_op_type_from_token_type(Token_Type type)
         default: return BINARY_OP_UNKNOWN;
     }
 }
+
+void push_param_to_param_list(Arena *arena, Func_Param_List *params, Func_Param param)
+{
+    if(params->count >= params->capacity) {
+        size_t new_capacity = params->capacity * 2;
+        if(new_capacity == 0) new_capacity = 32;
+        void *new_data = arena_alloc(arena, new_capacity * sizeof(*params->data));
+        assert(new_data && "Buy more RAM LOL!");
+        memcpy(new_data, params->data, params->count * sizeof(*params->data));
+        params->data = new_data;
+        params->capacity = new_capacity;
+    }
+
+    params->data[params->count++] = param;
+}
+
+void push_expr_to_expr_list(Arena *arena, Expr_List *list, Expr expr)
+{
+    if(list->count >= list->capacity) {
+        size_t new_capacity = list->capacity * 2;
+        if(new_capacity == 0) new_capacity = 32;
+        void *new_data = arena_alloc(arena, new_capacity * sizeof(*list->data));
+        assert(new_data && "buy more ram lol!");
+        memcpy(new_data, list->data, list->count * sizeof(*list->data));
+        list->data = new_data;
+        list->capacity = new_capacity;
+    }
+
+    list->data[list->count++] = expr;
+}
+
+void push_stmt_to_block(Arena *arena, Block *block, Stmt stmt)
+{
+    if(block->count >= block->capacity) {
+        size_t new_capacity = block->capacity * 2;
+        if(new_capacity == 0) new_capacity = 32;
+        void *new_data = arena_alloc(arena, new_capacity * sizeof(*block->data));
+        assert(new_data && "buy more ram lol!");
+        memcpy(new_data, block->data, block->count * sizeof(*block->data));
+        block->data = new_data;
+        block->capacity = new_capacity;
+    }
+
+    block->data[block->count++] = stmt;
+}
+
+

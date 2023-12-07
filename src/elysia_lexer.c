@@ -1,4 +1,6 @@
-#include "lexer.h"
+#include "elysia_lexer.h"
+#include "elysia_compiler.h"
+#include "sv.h"
 
 typedef struct {
     Token_Type type;
@@ -12,6 +14,7 @@ static Token_Info _token_info[] = {
     [TOKEN_INTEGER] = { .type = TOKEN_INTEGER, .name = "integer literal", .is_binary_op_token = false, },
     [TOKEN_FLOAT] = { .type = TOKEN_FLOAT, .name = "float literal", .is_binary_op_token = false, },
     [TOKEN_STRING] = { .type = TOKEN_STRING, .name = "string literal", .is_binary_op_token = false, },
+    [TOKEN_COLON] = { .type = TOKEN_COLON, .name = "semicolon", .hardcode = ";", .is_binary_op_token = false },
     [TOKEN_SEMICOLON] = { .type = TOKEN_SEMICOLON, .name = "semicolon", .hardcode = ";", .is_binary_op_token = false },
     [TOKEN_COMMA] = { .type = TOKEN_COMMA, . name = "comma", .hardcode = ",", .is_binary_op_token = false },
     [TOKEN_DOT] = { .type = TOKEN_DOT, . name = "dot", .hardcode = ".", .is_binary_op_token = false },
@@ -23,7 +26,7 @@ static Token_Info _token_info[] = {
     [TOKEN_RBRACK] = { .type = TOKEN_RBRACK, .name = "right bracket", .hardcode = "]", .is_binary_op_token = false },
     [TOKEN_ADD] = { .type = TOKEN_ADD, .name = "add", .hardcode = "+", .is_binary_op_token = true },
     [TOKEN_SUB] = { .type = TOKEN_SUB, .name = "sub", .hardcode = "-", .is_binary_op_token = true },
-    [TOKEN_MUL] = { .type = TOKEN_MUL, .name = "mul", .hardcode = "*", .is_binary_op_token = true },
+    [TOKEN_ASTERISK] = { .type = TOKEN_ASTERISK, .name = "asterisk", .hardcode = "*", .is_binary_op_token = true },
     [TOKEN_DIV] = { .type = TOKEN_DIV, .name = "div", .hardcode = "/", .is_binary_op_token = true },
     [TOKEN_MOD] = { .type = TOKEN_MOD, .name = "mod", .hardcode = "%", .is_binary_op_token = true },
     [TOKEN_ASSIGN] = { .type = TOKEN_ASSIGN, .name = "assign", .hardcode = "=", .is_binary_op_token = false },
@@ -125,7 +128,7 @@ bool cache_next_token(Lexer *lex)
         return false;
     }
 
-    while(__iswhitespace(lex->cc)) {
+    while(char_iswhitespace(lex->cc)) {
         if(lex->cc == '\n') {
             lex->loc.row += 1;
             lex->loc.col = 0;
@@ -144,6 +147,10 @@ bool cache_next_token(Lexer *lex)
             break;
         case ';':
             cache_token(lex, TOKEN_SEMICOLON, sv_slice(lex->source, lex->i, lex->i + 1));
+            advance_lexer(lex);
+            break;
+        case ':':
+            cache_token(lex, TOKEN_COLON, sv_slice(lex->source, lex->i, lex->i + 1));
             advance_lexer(lex);
             break;
         case '(':
@@ -179,7 +186,7 @@ bool cache_next_token(Lexer *lex)
             advance_lexer(lex);
             break;
         case '*':
-            cache_token(lex, TOKEN_MUL, sv_slice(lex->source, lex->i, lex->i + 1));
+            cache_token(lex, TOKEN_ASTERISK, sv_slice(lex->source, lex->i, lex->i + 1));
             advance_lexer(lex);
             break;
         case '/':
@@ -264,20 +271,19 @@ bool cache_next_token(Lexer *lex)
             } break;
         default:
             {
-                if(__isalpha(lex->cc)) {
+                if(char_isalpha(lex->cc)) {
                     size_t start = lex->i;
-                    while(__isalnum(lex->cc) || lex->cc == '_') {
+                    while(char_isalnum(lex->cc) || lex->cc == '_') {
                         advance_lexer(lex);
                     }
                     cache_token(lex, TOKEN_NAME, sv_slice(lex->source, start, lex->i));
-                } else if(__isdigit(lex->cc)) {
+                } else if(char_isdigit(lex->cc)) {
                     size_t start = lex->i;
                     bool is_float = false;
-                    while(__isdigit(lex->cc) || lex->cc == '.') {
+                    while(char_isdigit(lex->cc) || lex->cc == '.') {
                         if(lex->cc == '.') {
                             if(is_float) {
-                                compiler_trap(lex->loc, "Invalid syntax another '.' in a float number literal");
-                                exit(EXIT_FAILURE);
+                                compilation_error(lex->loc, "Invalid syntax another '.' in a float number literal");
                             }
                             is_float = true;
                         }
@@ -315,7 +321,7 @@ bool next_token(Lexer *lex, Token *token)
     return lexer_cache_shift(lex, token);
 }
 
-bool init_lexer(Lexer *lex, String_View source)
+bool init_lexer(Lexer *lex, String_View source_file_path, String_View source)
 {
     if(!lex || source.count == 0) return false;
     lex->i = 0;
@@ -323,6 +329,7 @@ bool init_lexer(Lexer *lex, String_View source)
     lex->cc = lex->source.data[lex->i];
     lex->cache.head = 0;
     lex->cache.tail = 0;
+    lex->loc.file_path = source_file_path;
     lex->loc.col = 1;
     lex->loc.row = 1;
     return true;
@@ -337,11 +344,11 @@ Token expect_token(Lexer *lex, Token_Type type)
 {
     Token token = {0};
     if(!next_token(lex, &token)) {
-        compiler_trap(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
+        compilation_error(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
     }
 
     if(token.type != type) {
-        compiler_trap(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
+        compilation_error(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
     }
 
     return token;
@@ -351,7 +358,7 @@ Token expect_keyword(Lexer *lex, String_View name)
 {
     Token token = expect_token(lex, TOKEN_NAME);
     if(!sv_eq(token.value, name)) {
-        compiler_trap(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
+        compilation_error(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
     }
     return token;
 }
@@ -360,11 +367,11 @@ Token expect_peeked_token(Lexer *lex, Token_Type type, size_t i)
 {
     Token token = {0};
     if(!peek_token(lex, &token, i)) {
-        compiler_trap(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
+        compilation_error(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
     }
 
     if(token.type != type) {
-        compiler_trap(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
+        compilation_error(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
     }
 
     return token;
@@ -374,7 +381,7 @@ Token expect_peeked_keyword(Lexer *lex, String_View name, size_t i)
 {
     Token token = expect_peeked_token(lex, TOKEN_NAME, i);
     if(!sv_eq(token.value, name)) {
-        compiler_trap(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
+        compilation_error(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
     }
     return token;
 }

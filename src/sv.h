@@ -1,57 +1,25 @@
-#ifndef PLENARY_INCLUDED
-#define PLENARY_INCLUDED
+#ifndef SV_H_
+#define SV_H_
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <stddef.h> // sizeof(), size_t 
-#include <string.h> // memcpy(), memset(),
 #include <stdbool.h> // bool
 
-// ======================================================
-// Platform detection
-// ======================================================
-
-// ======================================================
-// Configurations
-// ======================================================
-
-#define TEMP_CAPACITY (1*1024*1024)
-#define DA_INIT_CAPACITY 32
-#define REGION_DEFAULT_CAPACITY (8*1024)
-
-// ======================================================
-// Macros
-// ======================================================
-
-#define CAST(T, v) ((T)(v))
+#ifndef SWAP
 #define SWAP(T, a, b)   \
     do {                \
         T tmp = a;      \
         a = b;          \
         b = tmp;        \
     } while(0)
+#endif // SWAP
 
-
-// configurable macros
-#if !defined(ASSERT)
-#   include <assert.h>
-#   define ASSERT assert
-#endif
-
-#if !defined(MALLOC) && !defined(FREE) && !defined(REALLOC)
-#   include <stdlib.h>
-#   define MALLOC malloc
-#   define FREE free
-#   define REALLOC realloc
-#endif
-
-#if !defined(ASSERT)
-#   error "`plenary.h` require the definition of `ASSERT()` macro"
-#endif
-#if !defined(MALLOC) || !defined(FREE) || !defined(REALLOC)
-#   error "`plenary.h` requires you to define `ALLOC()`, `FREE()`, `REALLOC()` macros"
-#endif
+typedef struct {
+    const char* data;
+    size_t count;
+} String_View;
 
 // string view macros
 #define SV_FMT "%.*s"
@@ -62,72 +30,10 @@ extern "C" {
 #define SV(cstr_lit) sv_from_parts(cstr_lit, sizeof(cstr_lit) - 1)
 #define INVALID_SV (String_View){0}
 
-// dynamic array macros
-#define da(T) struct { T* data; size_t count, capacity; }
-#define da_free(da) FREE((da)->data)
-#define da_append(da, item) \
-    do {                                                            \
-        if((da)->count >= (da)->capacity) {                         \
-            size_t new_capacity = (da)->capacity * 2;               \
-            if(new_capacity == 0) new_capacity = DA_INIT_CAPACITY;  \
-            (da)->data = REALLOC((da)->data,                        \
-                    new_capacity * sizeof(*(da)->data));            \
-            (da)->capacity = new_capacity;                          \
-        }                                                           \
-        (da)->data[(da)->count++] = (item);                         \
-    } while(0)
-
-#define da_append_many(da, new_items, new_items_count) \
-    do {                                                                \
-        if((da)->count + new_items_count > (da)->capacity) {            \
-            if((da)->capacity == 0) (da)->capacity = DA_INIT_CAPACITY;  \
-            (da)->capacity = (da)->capacity * 2 + new_items_count;      \
-            (da)->data = REALLOC((da)->data,                            \
-                    (da)->capacity * sizeof(*(da)->data));              \
-        }                                                               \
-        memcpy((da)->data + (da)->count, new_items,                     \
-                new_items_count * sizeof(*(da)->data));                 \
-        (da)->count += new_items_count;                                 \
-    } while(0)
-
-
-// ======================================================
-// Types
-// ======================================================
-
-typedef struct {
-    const char* data;
-    size_t count;
-} String_View;
-
-typedef struct Region Region;
-struct Region {
-    Region* next;
-    size_t usage, capacity;
-    void* data;
-};
-
-typedef struct Arena Arena;
-struct Arena {
-    Region *first;
-    Region *last;
-};
-
-
-// ======================================================
-// Functions
-// ======================================================
-
-
-bool __iswhitespace(char ch);
-bool __isalpha(char c);
-bool __isdigit(char c);
-bool __isalnum(char c);
-
-void *temp_alloc(size_t size);
-void temp_reset(void);
-size_t temp_usage(void);
-char *temp_sprintf(const char *fmt, ...);
+bool char_iswhitespace(char ch);
+bool char_isalpha(char c);
+bool char_isdigit(char c);
+bool char_isalnum(char c);
 
 String_View sv_from_parts(const char* data, size_t n);
 String_View sv_slice(String_View strv, size_t start, size_t end);
@@ -147,80 +53,31 @@ String_View sv_chop_by_delim(String_View* strv, char delim);
 String_View sv_chop_by_sv(String_View* strv, String_View sv);
 int sv_to_int(String_View strv);
 
-void *arena_alloc(Arena *arena, size_t nbytes);
-void *arena_realloc(Arena *arena, void *oldptr, size_t oldsz, size_t newsz);
-void arena_reset(Arena *arena);
-void arena_free(Arena *arena);
-
 #ifdef __cplusplus
 }
 #endif
-#endif // PLENARY_INCLUDED
+#endif // SV_H_
 
-#ifdef PLENARY_IMPLEMENTATION
+#ifdef SV_IMPLEMENTATION
 
-#include <stdint.h> // uint8_t
-#include <stdarg.h> // va_list, va_start(), va_end(),
-#include <stdio.h>  // vsnprintf()
-
-bool __iswhitespace(char ch)
+bool char_iswhitespace(char ch)
 {
     return ch == '\n' || ch == '\t' || ch == ' ' || ch == '\r';
 }
 
-bool __isalpha(char c)
+bool char_isalpha(char c)
 {
     return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
 
-bool __isdigit(char c)
+bool char_isdigit(char c)
 {
     return ('0' <= c && c <= '9');
 }
 
-bool __isalnum(char c)
+bool char_isalnum(char c)
 {
     return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || ('0' <= c && c <= '9');
-}
-
-static struct {
-    uint8_t data[TEMP_CAPACITY];
-    size_t count;
-} TEMP;
-
-void *temp_alloc(size_t size)
-{
-    if(TEMP.count + size > TEMP_CAPACITY) return 0;
-    void* result = CAST(void*, &TEMP.data[TEMP.count]);
-    return result;
-}
-
-void temp_reset(void)
-{
-    memset(TEMP.data, 0, sizeof(uint8_t)*TEMP.count);
-    TEMP.count = 0;
-}
-
-size_t temp_usage(void)
-{
-    return TEMP.count;
-}
-
-char *temp_sprintf(const char *fmt, ...)
-{
-    ASSERT(fmt);
-    va_list args;
-    va_start(args, fmt);
-    int n = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-
-    ASSERT(n >= 0);
-    char* result = temp_alloc(n + 1);
-    ASSERT(result != NULL && "Reset the temporary allocator or extend the size of it");
-    va_start(args, fmt);
-    vsnprintf(result, n + 1, fmt, args);
-    va_end(args);
-    return result;
 }
 
 String_View sv_from_parts(const char* data, size_t n)
@@ -316,7 +173,7 @@ int sv_find(String_View strv, String_View sth, size_t index)
 String_View sv_ltrim(String_View strv)
 {
     size_t i = 0;
-    while(__iswhitespace(strv.data[i]))
+    while(char_iswhitespace(strv.data[i]))
         i += 1;
     strv.data += i;
     strv.count -= i;
@@ -327,7 +184,7 @@ String_View sv_rtrim(String_View strv)
 {
     if(strv.count == 0) return INVALID_SV;
     size_t i = 0;
-    while(__iswhitespace(strv.data[strv.count - i - 1]))
+    while(char_iswhitespace(strv.data[strv.count - i - 1]))
         i += 1;
     strv.count -= i;
     return strv;
@@ -427,77 +284,11 @@ int sv_to_int(String_View strv)
         strv.data += 1;
     }
     int result = 0;
-    for (size_t i = 0; i < strv.count && __isdigit(strv.data[i]); ++i) {
+    for (size_t i = 0; i < strv.count && char_isdigit(strv.data[i]); ++i) {
         result = result * 10 + (int) strv.data[i] - '0';
     }
     if(is_negative) result *= -1;
     return result;
 }
 
-
-Region* region_init(size_t capacity)
-{
-    size_t size = sizeof(Region) + capacity;
-    Region* r = (Region*)MALLOC(size);
-    ASSERT(r != NULL);
-    r->next = NULL;
-    r->usage = 0;
-    r->capacity = capacity;
-    r->data = (void*)(&r->data + sizeof(r->data));
-    return r;
-}
-
-void region_deinit(Region* r)
-{
-    FREE(r);
-}
-
-void* arena_alloc(Arena* a, size_t size)
-{
-    if(a->last == NULL) {
-        ASSERT(a->first == NULL);
-        size_t capacity = REGION_DEFAULT_CAPACITY;
-        if(capacity < size) capacity = size;
-        a->last = region_init(capacity);
-        a->first = a->last;
-    }
-
-    while(a->last->usage + size > a->last->capacity && a->last->next != NULL)
-    {
-        a->last = a->last->next;
-    }
-
-    if(a->last->usage + size > a->last->capacity) {
-        ASSERT(a->last->next == NULL);
-        size_t capacity = REGION_DEFAULT_CAPACITY;
-        if(capacity < size) capacity = size;
-        a->last = region_init(capacity);
-        a->first = a->last;
-    }
-
-    void* result = (void*)((size_t)a->last->data + a->last->usage);
-    a->last->usage += size;
-    return result;
-}
-
-void arena_reset(Arena* a)
-{
-    for(Region* r = a->first; r != NULL; r = r->next) {
-        r->usage = 0;
-    }
-    a->last = a->first;
-}
-
-void arena_free(Arena* a)
-{
-    Region* r = a->first;
-    while(r) {
-        Region* current = r;
-        r = r->next;
-        region_deinit(current);
-    }
-    a->first = NULL;
-    a->last = NULL;
-}
-
-#endif // PLENARY_IMPLEMENTATION
+#endif // SV_IMPLEMENTATION

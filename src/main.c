@@ -1,6 +1,6 @@
-#include "compiler.h"
-#include "lexer.h"
-#include "parser.h"
+#include "elysia_compiler.h"
+#include "elysia_lexer.h"
+#include "elysia_parser.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -32,36 +32,22 @@ int main(int argc, char **argv)
 
     String_View subcommand = shift(&argc, &argv, "Please provide a subcommand");
     if(sv_eq(subcommand, SV("com"))) {
+        Arena arena = {0};
         Lexer lex;
         lex.i = 0;
         String_View source_path = shift(&argc, &argv, "Please provide the source file path");
-        const char *source_data = context_load_file_data(source_path.data);
+        const char *source_data = arena_load_file_data(&arena, source_path.data);
         if(!source_data) {
             fatal("Failed to load source file data");
         }
+
         String_View source = sv_from_parts(source_data, strlen(source_data));
-        if(!init_lexer(&lex, source)) {
+        if(!init_lexer(&lex, source_path, source)) {
             fatal("Failed to initialize the lexer");
         }
 
-        Module mod = parse_module(&lex);
+        Module mod = parse_module(&arena, &lex);
         printf(SV_FMT"\n", SV_ARGV(mod.main.name));
-    } else if(sv_eq(subcommand, SV("tokenize"))) {
-        Lexer lex;
-        lex.i = 0;
-        String_View source_path = shift(&argc, &argv, "Please provide the source file path");
-        const char *source_data = context_load_file_data(source_path.data);
-        if(!source_data) {
-            fatal("Failed to load source file data");
-        }
-        String_View source = sv_from_parts(source_data, strlen(source_data));
-        if(!init_lexer(&lex, source)) {
-            fatal("Failed to initialize the lexer");
-        }
-        Token tok = {0};
-        while(next_token(&lex, &tok)) {
-            dump_token(tok);
-        }
     } else {
         fatal("Please provide a valid subcommand");
     }

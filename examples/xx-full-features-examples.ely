@@ -1,0 +1,22 @@
+type Entity struct {
+    name: *char,
+    age: i32,
+    male: bool,
+}
+
+fn main(argc: i32, argv: *char[]): i32 {
+    var entt = Entity{ name="Who Am I?", age=12, male = true };
+
+    if entt.male {
+        printf!("You're a male");
+    } else {
+        printf!("You're a female");
+    }
+
+    var i = 0;
+    while i < entt.age {
+        printf!("Happy birthday %d years %s", i, entt.name);
+    }
+
+    return 0
+}
