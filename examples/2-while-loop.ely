@@ -1,0 +1,8 @@
+fn main() {
+    var it: usize = 0;
+    var MAX_IT: usize = 100;
+    while it < MAX_IT {
+        it = it + 1;
+    }
+    return 0;
+}

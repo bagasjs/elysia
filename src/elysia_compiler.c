@@ -68,6 +68,17 @@ void fatal(const char *fmt, ...)
     exit(EXIT_FAILURE);
 }
 
+void prefix_print(char prefix, size_t prefix_count, const char *fmt, ...)
+{
+    for(size_t i = 0; i < prefix_count; ++i) {
+        putchar(prefix);
+    }
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stdout, fmt, args);
+    va_end(args);
+}
+
 char *arena_load_file_data(Arena *arena, const char *file_path)
 {
     FILE *f = fopen(file_path, "rb");
@@ -96,3 +107,4 @@ char *arena_load_file_data(Arena *arena, const char *file_path)
     fclose(f);
     return file_data;
 }
+

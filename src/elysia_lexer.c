@@ -42,7 +42,25 @@ static Token_Info _token_info[] = {
     [TOKEN_XOR] = { .type = TOKEN_XOR, .name = "xor", .hardcode = "^", .is_binary_op_token = true },
     [TOKEN_SHL] = { .type = TOKEN_SHL, .name = "shl", .hardcode = "<<", .is_binary_op_token = true },
     [TOKEN_SHR] = { .type = TOKEN_SHR, .name = "shr", .hardcode = ">>", .is_binary_op_token = true },
+
+    [TOKEN_FUNCTION] = { .type = TOKEN_FUNCTION, .name = "function", .hardcode = "fn", .is_binary_op_token = false }, 
+    [TOKEN_RETURN] = { .type = TOKEN_RETURN, .name = "return", .hardcode = "return", .is_binary_op_token = false }, 
+    [TOKEN_VAR] = { .type = TOKEN_VAR, .name = "var", .hardcode = "var", .is_binary_op_token = false }, 
+    [TOKEN_IF] = { .type = TOKEN_IF, .name = "if", .hardcode = "if", .is_binary_op_token = false }, 
+    [TOKEN_ELSE] = { .type = TOKEN_ELSE, .name = "else", .hardcode = "else", .is_binary_op_token = false },
+    [TOKEN_WHILE] = { .type = TOKEN_WHILE, .name = "while", .hardcode = "while", .is_binary_op_token = false }, 
+    [TOKEN_BREAK] = { .type = TOKEN_BREAK, .name = "break", .hardcode = "break", .is_binary_op_token = false }, 
+    [TOKEN_CONTINUE] = { .type = TOKEN_CONTINUE, .name = "continue", .hardcode = "continue", .is_binary_op_token = false },
 };
+
+static const String_View FUNCTION_KEYWORD = SV_STATIC("fn");
+static const String_View RETURN_KEYWORD = SV_STATIC("return");
+static const String_View IF_KEYWORD = SV_STATIC("if");
+static const String_View ELSE_KEYWORD = SV_STATIC("else");
+static const String_View WHILE_KEYWORD = SV_STATIC("while");
+static const String_View BREAK_KEYWORD = SV_STATIC("break");
+static const String_View CONTINUE_KEYWORD = SV_STATIC("continue");
+static const String_View VAR_KEYWORD = SV_STATIC("var");
 
 bool is_token_binops(Token_Type type)
 {
@@ -116,6 +134,7 @@ void cache_token(Lexer *lex, Token_Type type, String_View value)
     cached.value = value;
     cached.loc.col = lex->loc.col - value.count;
     cached.loc.row = lex->loc.row;
+    cached.loc.file_path = lex->loc.file_path;
     if(!lexer_cache_push(lex, cached)) {
         fatal("There's too many tokens to be cached (tail = %zu, head = %zu)", lex->cache.head, lex->cache.tail);
     }
@@ -276,7 +295,26 @@ bool cache_next_token(Lexer *lex)
                     while(char_isalnum(lex->cc) || lex->cc == '_') {
                         advance_lexer(lex);
                     }
-                    cache_token(lex, TOKEN_NAME, sv_slice(lex->source, start, lex->i));
+                    String_View result = sv_slice(lex->source, start, lex->i);
+                    if(sv_eq(result, FUNCTION_KEYWORD)) {
+                        cache_token(lex, TOKEN_FUNCTION, result);
+                    } else if(sv_eq(result, RETURN_KEYWORD)) {
+                        cache_token(lex, TOKEN_RETURN, result);
+                    } else if(sv_eq(result, IF_KEYWORD)) {
+                        cache_token(lex, TOKEN_IF, result);
+                    } else if(sv_eq(result, ELSE_KEYWORD)) {
+                        cache_token(lex, TOKEN_ELSE, result);
+                    } else if(sv_eq(result, WHILE_KEYWORD)) {
+                        cache_token(lex, TOKEN_WHILE, result);
+                    } else if(sv_eq(result, BREAK_KEYWORD)) {
+                        cache_token(lex, TOKEN_BREAK, result);
+                    } else if(sv_eq(result, CONTINUE_KEYWORD)) {
+                        cache_token(lex, TOKEN_CONTINUE, result);
+                    } else if(sv_eq(result, VAR_KEYWORD)) {
+                        cache_token(lex, TOKEN_VAR, result);
+                    } else {
+                        cache_token(lex, TOKEN_NAME, result);
+                    }
                 } else if(char_isdigit(lex->cc)) {
                     size_t start = lex->i;
                     bool is_float = false;
@@ -323,7 +361,7 @@ bool next_token(Lexer *lex, Token *token)
 
 bool init_lexer(Lexer *lex, String_View source_file_path, String_View source)
 {
-    if(!lex || source.count == 0) return false;
+    if(!lex) return false;
     lex->i = 0;
     lex->source = source;
     lex->cc = lex->source.data[lex->i];

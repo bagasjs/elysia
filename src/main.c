@@ -1,3 +1,4 @@
+#include "elysia_ast.h"
 #include "elysia_compiler.h"
 #include "elysia_lexer.h"
 #include "elysia_parser.h"
@@ -47,7 +48,7 @@ int main(int argc, char **argv)
         }
 
         Module mod = parse_module(&arena, &lex);
-        printf(SV_FMT"\n", SV_ARGV(mod.main.name));
+        dump_func_def(&mod.main, 0);
     } else {
         fatal("Please provide a valid subcommand");
     }

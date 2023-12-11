@@ -1,4 +1,4 @@
-fun main(argc: i32, argv: *char[]) {
+fn main(argc: i32, argv: *char[]): i32 {
     var x: i32 = 1 + 1 / 2 * 3 - 5;
     var name: *char = "Hello, World";
     return x;
