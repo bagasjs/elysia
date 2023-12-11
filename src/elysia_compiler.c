@@ -1,110 +1,46 @@
-#include "elysia_compiler.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-
-#define SV_IMPLEMENTATION
+#include "elysia.h"
 #include "sv.h"
+#include "elysia_compiler.h"
+#include <stdio.h>
 
-#define ARENA_IMPLEMENTATION
-#include "arena.h"
-
-void compilation_note(Location loc, const char *fmt, ...)
+Data_Type data_type_from_parsed_type(Parsed_Type type)
 {
-    if(loc.row == 0) {
-        fprintf(stderr, SV_FMT": note: ", SV_ARGV(loc.file_path));
+    Data_Type result;
+    result.name = type.name;
+    result.is_ptr = type.is_ptr;
+    result.is_array = type.is_array;
+    result.array_len = type.array_len;
+    if(sv_eq(type.name, SV("void"))) {
+        if(!type.is_ptr) {
+            compilation_error(type.loc, "`void` type is only available to use for pointer type");
+        }
+        result.size = 8;
+    } else if(sv_eq(type.name, SV("i64"))) {
+        result.size = 8;
+    } else if(sv_eq(type.name, SV("i32"))) {
+        result.size = 4;
+    } else if(sv_eq(type.name, SV("i16"))) {
+        result.size = 2;
+    } else if(sv_eq(type.name, SV("i8"))) {
+        result.size = 1;
+    } else if(sv_eq(type.name, SV("u64"))) {
+        result.size = 8;
+    } else if(sv_eq(type.name, SV("u32"))) {
+        result.size = 4;
+    } else if(sv_eq(type.name, SV("u16"))) {
+        result.size = 2;
+    } else if(sv_eq(type.name, SV("u8"))) {
+        result.size = 1;
+    } else if(sv_eq(type.name, SV("bool"))) {
+        result.size = 1;
+    } else if(sv_eq(type.name, SV("char"))) {
+        result.size = 1;
     } else {
-        fprintf(stderr, SV_FMT":%zu:%zu: note: ", SV_ARGV(loc.file_path), loc.row, loc.col);
+        compilation_error(type.loc, "Unknown type "SV_FMT"\n", SV_ARGV(type.name));
     }
-
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    fputc('\n', stderr);
+    return result;
 }
 
-void compilation_warning(Location loc, const char *fmt, ...)
+void evaluate_module(Module *module)
 {
-    if(loc.row == 0) {
-        fprintf(stderr, SV_FMT": warning: ", SV_ARGV(loc.file_path));
-    } else {
-        fprintf(stderr, SV_FMT":%zu:%zu: warning: ", SV_ARGV(loc.file_path), loc.row, loc.col);
-    }
-
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    fputc('\n', stderr);
 }
-
-void compilation_error(Location loc, const char *fmt, ...)
-{
-    if(loc.row == 0) {
-        fprintf(stderr, SV_FMT": error: ", SV_ARGV(loc.file_path));
-    } else {
-        fprintf(stderr, SV_FMT":%zu:%zu: error: ", SV_ARGV(loc.file_path), loc.row, loc.col);
-    }
-
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    fputc('\n', stderr);
-    exit(EXIT_FAILURE);
-}
-
-void fatal(const char *fmt, ...)
-{
-    fprintf(stderr, "ERROR: ");
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    fprintf(stderr, "\n");
-    exit(EXIT_FAILURE);
-}
-
-void prefix_print(char prefix, size_t prefix_count, const char *fmt, ...)
-{
-    for(size_t i = 0; i < prefix_count; ++i) {
-        putchar(prefix);
-    }
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stdout, fmt, args);
-    va_end(args);
-}
-
-char *arena_load_file_data(Arena *arena, const char *file_path)
-{
-    FILE *f = fopen(file_path, "rb");
-    if(!f) return NULL;
-
-    size_t file_size = 0;
-    fseek(f, 0, SEEK_END);
-    file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char *file_data = (char *)arena_alloc(arena, file_size + 1);
-    if(!file_data) {
-        fclose(f);
-        return NULL;
-    }
-
-    size_t bytes_read = fread(file_data, 1, file_size, f);
-    if (bytes_read != file_size) {
-        fclose(f);
-        free(file_data);
-        return NULL;
-    }
-
-    file_data[file_size] = 0;
-    file_data[file_size - 1] = 0;
-    fclose(f);
-    return file_data;
-}
-

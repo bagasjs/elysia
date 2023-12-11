@@ -3,7 +3,7 @@
 
 #include "sv.h"
 #include "arena.h"
-#include "elysia_compiler.h"
+#include "elysia.h"
 #include "elysia_lexer.h"
 
 typedef enum {
@@ -13,12 +13,30 @@ typedef enum {
     BINARY_OP_OR, BINARY_OP_XOR, BINARY_OP_SHL, BINARY_OP_SHR,
 } Binary_Op_Type;
 
+typedef struct Parsed_Type Parsed_Type;
+typedef struct Parsed_Struct_Field Parsed_Struct_Field;
+
 typedef struct {
+    String_View name;
+    struct {
+        Parsed_Struct_Field *data;
+        size_t count;
+    } fields;
+} Parsed_Struct;
+
+struct Parsed_Type {
     String_View name;
     bool is_ptr;
     bool is_array;
     size_t array_len;
-} Parsed_Data_Type;
+    Location loc;
+};
+
+struct Parsed_Struct_Field {
+    Parsed_Type type;
+    String_View name;
+};
+
 
 typedef enum {
     EXPR_UNKNOWN = 0,
@@ -99,12 +117,12 @@ struct Stmt_Return {
 
 struct Stmt_Var_Def {
     String_View name;
-    Parsed_Data_Type type;
+    Parsed_Type type;
 };
 
 struct Stmt_Var_Init {
     String_View name;
-    Parsed_Data_Type type;
+    Parsed_Type type;
     Expr value;
 };
 
@@ -136,7 +154,7 @@ struct Stmt {
 typedef struct {
     Location loc;
     String_View name;
-    Parsed_Data_Type type;
+    Parsed_Type type;
 } Func_Param;
 
 typedef struct {
@@ -148,7 +166,7 @@ typedef struct {
     Location loc;
     String_View name;
     Func_Param_List params;
-    Parsed_Data_Type return_type;
+    Parsed_Type return_type;
     Block body;
 } Func_Def;
 
@@ -164,6 +182,6 @@ Binary_Op_Type binary_op_type_from_token_type(Token_Type type);
 void dump_func_def(const Func_Def *func_def, size_t depth);
 void dump_stmt(const Stmt *stmt, size_t depth);
 void dump_expr(const Expr *expr, size_t depth);
-void dump_parsed_type(const Parsed_Data_Type *type);
+void dump_parsed_type(const Parsed_Type *type);
 
 #endif // ELYSIA_AST_H_

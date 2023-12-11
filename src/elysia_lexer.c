@@ -1,5 +1,5 @@
+#include "elysia.h"
 #include "elysia_lexer.h"
-#include "elysia_compiler.h"
 #include "sv.h"
 
 typedef struct {

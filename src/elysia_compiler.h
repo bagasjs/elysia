@@ -1,25 +1,37 @@
 #ifndef ELYSIA_COMPILER_H_
 #define ELYSIA_COMPILER_H_
 
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include "sv.h"
-#include "arena.h"
+#include "elysia.h"
+#include "elysia_ast.h"
 
-#define ELYSIA_MESSAGE_STACK_CAPACITY 32
+#define ELYSIA_SCOPE_VARS_CAPACITY 1024
 
 typedef struct {
-    String_View file_path;
-    size_t row, col;
-} Location;
+    String_View name;
+    bool is_ptr;
+    bool is_array;
+    size_t size;
+    size_t array_len;
+} Data_Type;
 
-void fatal(const char *fmt, ...);
+typedef struct {
+    const char *name;
+    Data_Type type;
+} Compiled_Var;
 
-void compilation_note(Location at, const char *fmt, ...);
-void compilation_warning(Location at, const char *fmt, ...);
-void compilation_error(Location at, const char *fmt, ...);
-char *arena_load_file_data(Arena *arena, const char *file_path);
-void prefix_print(char prefix, size_t prefix_count, const char *fmt, ...);
+typedef struct Scope Scope;
+struct Scope {
+    Scope *parent;
+    Compiled_Var var[ELYSIA_SCOPE_VARS_CAPACITY];
+    size_t count;
+};
+
+typedef struct {
+    Scope *scope;
+} Compiler;
+
+Data_Type data_type_from_parsed_type(Parsed_Type type);
+Compiled_Var get_var_from_scope(Scope *scope, String_View name);
+bool push_var_to_scope(Scope *scope, Compiled_Var var);
 
 #endif // ELYSIA_COMPILER_H_

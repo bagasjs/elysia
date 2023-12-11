@@ -3,11 +3,10 @@
 
 #include "sv.h"
 #include "arena.h"
-#include "elysia_compiler.h"
 #include "elysia_lexer.h"
 #include "elysia_ast.h"
 
-Parsed_Data_Type parse_data_type(Arena *arena, Lexer *lex);
+Parsed_Type parse_data_type(Arena *arena, Lexer *lex);
 Expr parse_expr(Arena *arena, Lexer *lex);
 Stmt parse_stmt(Arena *arena, Lexer *lex);
 Func_Param_List parse_func_params(Arena *arena, Lexer *lex);

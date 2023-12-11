@@ -2,7 +2,7 @@
 #define LEXER_H_
 
 #include <stdint.h>
-#include "elysia_compiler.h"
+#include "elysia.h"
 #include "sv.h"
 
 #define MAXIMUM_LEXER_CACHE_DATA 10

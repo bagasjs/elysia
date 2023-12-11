@@ -1,5 +1,5 @@
+#include "elysia.h"
 #include "elysia_ast.h"
-#include "elysia_compiler.h"
 #include <string.h>
 
 typedef struct Stmt_Info {
@@ -15,6 +15,28 @@ static const Stmt_Info stmt_infos[COUNT_STMTS] = {
     [STMT_EXPR] = { .name = "Expression Statement", .type = STMT_EXPR },
     [STMT_IF] = { .name = "If Statement", .type = STMT_IF }, 
     [STMT_WHILE] = { .name = "While Block", .type = STMT_WHILE },
+};
+
+// typedef enum {
+//     BINARY_OP_UNKNOWN = 0,
+//     BINARY_OP_ADD, BINARY_OP_SUB, BINARY_OP_DIV, BINARY_OP_MUL, BINARY_OP_MOD, BINARY_OP_EQ,
+//     BINARY_OP_NE, BINARY_OP_LT, BINARY_OP_LE, BINARY_OP_GT, BINARY_OP_GE, BINARY_OP_AND,
+//     BINARY_OP_OR, BINARY_OP_XOR, BINARY_OP_SHL, BINARY_OP_SHR,
+// } Binary_Op_Type;
+
+typedef struct Expr_Info {
+    const char *name;
+    Expr_Type type;
+} Expr_Info;
+
+static const Expr_Info expr_infos[COUNT_EXPRS] = {
+    [EXPR_INTEGER_LITERAL] = { .name = "Integer Literal", .type = EXPR_INTEGER_LITERAL, }, 
+    [EXPR_STRING_LITERAL] = { .name = "String Literal", .type = EXPR_STRING_LITERAL, }, 
+    [EXPR_BOOL_LITERAL] = { .name = "Bool Literal", .type = EXPR_BOOL_LITERAL, }, 
+    [EXPR_FLOAT_LITERAL] = { .name = "Float Literal", .type = EXPR_FLOAT_LITERAL, },
+    [EXPR_FUNCALL] = { .name = "Function Call", .type = EXPR_FUNCALL, }, 
+    [EXPR_VAR_READ] = { .name = "Variable Read", .type = EXPR_VAR_READ, }, 
+    [EXPR_BINARY_OP] = { .name = "Binary Operation", .type = EXPR_BINARY_OP, },
 };
 
 Binary_Op_Type binary_op_type_from_token_type(Token_Type type)
@@ -110,7 +132,7 @@ void dump_func_def(const Func_Def *func_def, size_t depth)
     }
 }
 
-void dump_parsed_type(const Parsed_Data_Type *type)
+void dump_parsed_type(const Parsed_Type *type)
 {
     if(type->is_ptr) {
         putchar('*');
@@ -132,12 +154,24 @@ void dump_stmt(const Stmt *stmt, size_t depth)
     switch(stmt->type) {
         case STMT_VAR_DEF:
             {
+                DUMP(depth + 1, "Name: "SV_FMT"\n", SV_ARGV(stmt->as.var_def.name));
+                DUMP(depth + 1, "Type:");
+                dump_parsed_type(&stmt->as.var_def.type);
+                putchar('\n');
             } break;
         case STMT_VAR_INIT:
             {
+                DUMP(depth + 1, "Name: "SV_FMT"\n", SV_ARGV(stmt->as.var_init.name));
+                DUMP(depth + 1, "Type:");
+                dump_parsed_type(&stmt->as.var_init.type);
+                putchar('\n');
+                DUMP(depth + 1, "Value:\n");
+                dump_expr(&stmt->as.var_init.value, depth + 2);
             } break;
         case STMT_VAR_ASSIGN:
             {
+                DUMP(depth + 1, "Name: "SV_FMT"\n", SV_ARGV(stmt->as.var_assign.name));
+                dump_expr(&stmt->as.var_assign.value, depth + 2);
             } break;
         case STMT_WHILE:
             {
@@ -157,9 +191,5 @@ void dump_stmt(const Stmt *stmt, size_t depth)
 
 void dump_expr(const Expr *expr, size_t depth)
 {
-    switch(expr->type) {
-        default:
-            {
-            } break;
-    }
+    DUMP(depth, "- %s\n", expr_infos[expr->type].name);
 }

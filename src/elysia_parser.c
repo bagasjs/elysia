@@ -1,6 +1,6 @@
+#include "elysia.h"
 #include "elysia_parser.h"
 #include "elysia_ast.h"
-#include "elysia_compiler.h"
 #include "elysia_lexer.h"
 
 #include <assert.h>
@@ -50,11 +50,11 @@ Func_Def parse_func_def(Arena *arena, Lexer *lex)
 }
 
 
-Parsed_Data_Type parse_data_type(Arena *arena, Lexer *lex)
+Parsed_Type parse_data_type(Arena *arena, Lexer *lex)
 {
     (void)arena;
     expect_token(lex, TOKEN_COLON);
-    Parsed_Data_Type result = {0};
+    Parsed_Type result = {0};
     Token token;
     if(peek_token(lex, &token, 0) && token.type == TOKEN_ASTERISK) {
         expect_token(lex, TOKEN_ASTERISK);
@@ -63,6 +63,7 @@ Parsed_Data_Type parse_data_type(Arena *arena, Lexer *lex)
 
     token = expect_token(lex, TOKEN_NAME);
     result.name = token.value;
+    result.loc = token.loc;
     if(peek_token(lex, &token, 0) && token.type == TOKEN_LBRACK) {
         expect_token(lex, TOKEN_LBRACK);
         result.is_array = true;
@@ -178,7 +179,7 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
                 }
 
                 result.loc = token.loc;
-                Parsed_Data_Type data_type = {0};
+                Parsed_Type data_type = {0};
                 bool has_data_type = false;
 
                 if(token0.type == TOKEN_COLON) {
@@ -265,6 +266,7 @@ Expr_List parse_func_args(Arena *arena, Lexer *lex)
     return list;
 }
 
+// TODO: Generalize the binary op parsing of the expression
 Expr parse_expr(Arena *arena, Lexer *lex)
 {
     Token token = {0};
@@ -289,10 +291,6 @@ Expr parse_expr(Arena *arena, Lexer *lex)
                     result.type = EXPR_BOOL_LITERAL;
                 } else {
                     token = expect_token(lex, TOKEN_NAME);
-                    Expr var_read = {0};
-                    var_read.as.var_read.name = token.value;
-                    var_read.as.var_read.loc = token.loc;
-
                     Token ntoken = {0};
                     peek_token(lex, &ntoken, 0);
                     if(ntoken.type == TOKEN_LPAREN) {
@@ -300,20 +298,10 @@ Expr parse_expr(Arena *arena, Lexer *lex)
                         result.loc = token.loc;
                         result.as.func_call.loc = ntoken.loc;
                         result.as.func_call.args = parse_func_args(arena, lex);
-                    } else if(binary_op_type_from_token_type(ntoken.type) != BINARY_OP_UNKNOWN) {
-                        next_token(lex, &ntoken);
-                        result.type = EXPR_BINARY_OP;
-                        result.as.binop = arena_alloc(arena, sizeof(struct Expr_Binary_Op));
-                        if(!result.as.binop) {
-                            fatal("Failed to allocate for expression: Buy more RAM LOL");
-                        }
-                        result.loc = ntoken.loc;
-                        result.as.binop->type = binary_op_type_from_token_type(ntoken.type);
-                        result.as.binop->loc = ntoken.loc;
-                        result.as.binop->left = var_read;
-                        result.as.binop->right = parse_expr(arena, lex);
                     } else {
-                        result = var_read;
+                        result.type = EXPR_VAR_READ;
+                        result.as.var_read.name = token.value;
+                        result.as.var_read.loc = token.loc;
                     }
                 }
             } break;
@@ -321,31 +309,9 @@ Expr parse_expr(Arena *arena, Lexer *lex)
         case TOKEN_INTEGER:
             {
                 token = expect_token(lex, TOKEN_INTEGER);
-                Expr left = {0};
-                left.loc = token.loc;
-                left.type = EXPR_INTEGER_LITERAL;
-                left.as.literal_int = sv_to_int(token.value);
-
-                Token ntoken = {0};
-                peek_token(lex, &ntoken, 0);
-                Binary_Op_Type op_type = binary_op_type_from_token_type(ntoken.type);
-
-                if(op_type != BINARY_OP_UNKNOWN) {
-                    token = expect_token(lex, ntoken.type);
-                    result.loc = token.loc;
-                    result.type = EXPR_BINARY_OP;
-                    result.as.binop = arena_alloc(arena, sizeof(struct Expr_Binary_Op));
-                    if(!result.as.binop) {
-                        fatal("Failed to allocate for binary op expression: Buy more RAM LOL");
-                    }
-                    result.as.binop->loc = ntoken.loc;
-                    result.as.binop->type = op_type;
-                    result.as.binop->left = left;
-                    result.as.binop->right = parse_expr(arena, lex);
-                } else {
-                    result = left;
-                }
-
+                result.loc = token.loc;
+                result.type = EXPR_INTEGER_LITERAL;
+                result.as.literal_int = sv_to_int(token.value);
             } break;
         case TOKEN_STRING:
             {
@@ -359,6 +325,23 @@ Expr parse_expr(Arena *arena, Lexer *lex)
                 fatal("Token: "SV_FMT"\n", SV_ARGV(token.value));
                 assert(0 && "Unreachable: THIS IS IN DEVELOPMENT MODE");
             } break;
+    }
+
+    Token ntoken = {0};
+    peek_token(lex, &ntoken, 0);
+    if(binary_op_type_from_token_type(ntoken.type) != BINARY_OP_UNKNOWN) {
+        Expr left = result;
+        next_token(lex, &ntoken);
+        result.type = EXPR_BINARY_OP;
+        result.as.binop = arena_alloc(arena, sizeof(struct Expr_Binary_Op));
+        if(!result.as.binop) {
+            fatal("Failed to allocate for expression: Buy more RAM LOL");
+        }
+        result.loc = ntoken.loc;
+        result.as.binop->type = binary_op_type_from_token_type(ntoken.type);
+        result.as.binop->loc = ntoken.loc;
+        result.as.binop->left = left;
+        result.as.binop->right = parse_expr(arena, lex);
     }
 
     return result;
