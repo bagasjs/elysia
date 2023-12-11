@@ -22,5 +22,4 @@ void compilation_error(Location at, const char *fmt, ...);
 char *arena_load_file_data(Arena *arena, const char *file_path);
 void prefix_print(char prefix, size_t prefix_count, const char *fmt, ...);
 
-
 #endif // ELYSIA_COMPILER_H_
