@@ -3,7 +3,7 @@
 CC="/usr/bin/gcc"
 BUILD_DIR="./build/"
 TARGET="elysia"
-CFLAGS="-Wall -Wextra -Wpedantic"
+CFLAGS="-Wall -Wextra -Wpedantic -ggdb"
 LFLAGS="-L build"
 SOURCES=(
     "./src/elysia.c"

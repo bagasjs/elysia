@@ -14,6 +14,7 @@ exit:
     ret
 
 _start:
+    mov rdi, 0
     call main
     mov rdi, rax
     call exit

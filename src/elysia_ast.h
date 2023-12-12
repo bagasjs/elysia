@@ -40,7 +40,7 @@ struct Data_Type {
     bool is_array;
     size_t array_len;
     union {
-        Native_Type type;
+        Native_Type native;
         Struct_Info _struct;
     } as;
 };
@@ -138,6 +138,7 @@ struct Stmt_Var_Init {
     String_View name;
     Data_Type type;
     Expr value;
+    bool infer_type;
 };
 
 struct Stmt_Var_Assign {

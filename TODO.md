@@ -1,1 +1,1 @@
-- Better error message
+- Hashmap for variable indexing

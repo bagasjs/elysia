@@ -201,7 +201,9 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
                 if(token0.type == TOKEN_ASSIGN) {
                     result.type = STMT_VAR_INIT;
                     result.as.var_init.name = name;
+                    result.as.var_init.infer_type = true;
                     if(has_data_type) {
+                        result.as.var_init.infer_type = false;
                         result.as.var_init.type = data_type;
                     }
                     result.as.var_init.value = parse_expr(arena, lex);

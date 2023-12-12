@@ -7,8 +7,6 @@
 #include "sv.h"
 #include "arena.h"
 
-#define ELYSIA_MESSAGE_STACK_CAPACITY 32
-
 typedef struct {
     String_View file_path;
     size_t row, col;
