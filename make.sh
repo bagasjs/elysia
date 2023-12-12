@@ -10,6 +10,7 @@ SOURCES=(
     "./src/elysia_ast.c"
     "./src/elysia_parser.c"
     "./src/elysia_lexer.c"
+    "./src/elysia_compiler.c"
     "./src/elysia_compiler_x86_64_nasm.c"
 
     "./src/main.c"

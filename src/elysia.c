@@ -23,7 +23,6 @@ void compilation_note(Location loc, const char *fmt, ...)
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
-    fputc('\n', stderr);
 }
 
 void compilation_warning(Location loc, const char *fmt, ...)
@@ -38,7 +37,6 @@ void compilation_warning(Location loc, const char *fmt, ...)
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
-    fputc('\n', stderr);
 }
 
 void compilation_error(Location loc, const char *fmt, ...)
@@ -53,7 +51,6 @@ void compilation_error(Location loc, const char *fmt, ...)
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
-    fputc('\n', stderr);
     exit(EXIT_FAILURE);
 }
 
@@ -108,3 +105,37 @@ char *arena_load_file_data(Arena *arena, const char *file_path)
     return file_data;
 }
 
+static Native_Type_Info native_type_infos[COUNT_NATIVE_TYPES] = {
+    [NATIVE_TYPE_VOID] = { .type = NATIVE_TYPE_VOID, .name = SV_STATIC("void"), .size = 0 },
+    [NATIVE_TYPE_BOOL] = { .type = NATIVE_TYPE_BOOL, .name = SV_STATIC("bool"), .size = 0 },
+    [NATIVE_TYPE_CHAR] = { .type = NATIVE_TYPE_CHAR, .name = SV_STATIC("char"), .size = 0 },
+    [NATIVE_TYPE_U8] = { .type = NATIVE_TYPE_U8, .name = SV_STATIC("u8"), .size = 0 },
+    [NATIVE_TYPE_U16] = { .type = NATIVE_TYPE_U16, .name = SV_STATIC("u16"), .size = 0 },
+    [NATIVE_TYPE_U32] = { .type = NATIVE_TYPE_U32, .name = SV_STATIC("u32"), .size = 0 },
+    [NATIVE_TYPE_U64] = { .type = NATIVE_TYPE_U64, .name = SV_STATIC("u64"), .size = 0 },
+    [NATIVE_TYPE_I8] = { .type = NATIVE_TYPE_I8, .name = SV_STATIC("i8"), .size = 0 },
+    [NATIVE_TYPE_I16] = { .type = NATIVE_TYPE_I16, .name = SV_STATIC("i16"), .size = 0 },
+    [NATIVE_TYPE_I32] = { .type = NATIVE_TYPE_I32, .name = SV_STATIC("i32"), .size = 0 },
+    [NATIVE_TYPE_I64] = { .type = NATIVE_TYPE_I64, .name = SV_STATIC("i64"), .size = 0 },
+};
+
+Native_Type_Info get_native_type_info(Native_Type type)
+{
+    return native_type_infos[type];
+}
+
+Native_Type_Info *find_native_type_info_by_name(String_View name)
+{
+    for(int i = 0; i < COUNT_NATIVE_TYPES; ++i) {
+        if(sv_eq(name, native_type_infos[i].name)) {
+            return &native_type_infos[i];
+        }
+    }
+    return NULL;
+}
+
+void compilation_failure(void)
+{
+    fprintf(stderr, "Compilation is terminated due to failure.");
+    exit(EXIT_FAILURE);
+}

@@ -35,6 +35,7 @@ bool char_isalpha(char c);
 bool char_isdigit(char c);
 bool char_isalnum(char c);
 
+String_View sv_from_cstr(const char *cstr);
 String_View sv_from_parts(const char* data, size_t n);
 String_View sv_slice(String_View strv, size_t start, size_t end);
 int sv_find_cstr(String_View strv, const char* sth, size_t index);
@@ -78,6 +79,16 @@ bool char_isdigit(char c)
 bool char_isalnum(char c)
 {
     return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || ('0' <= c && c <= '9');
+}
+
+String_View sv_from_cstr(const char *cstr)
+{
+    size_t i = 0;
+    while(cstr[i++] != '\0');
+    return (String_View) {
+        .data = cstr,
+        .count = i,
+    };
 }
 
 String_View sv_from_parts(const char* data, size_t n)

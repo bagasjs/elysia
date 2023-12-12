@@ -1,46 +1,50 @@
 #include "elysia.h"
+#include "elysia_ast.h"
 #include "sv.h"
 #include "elysia_compiler.h"
 #include <stdio.h>
 
-Data_Type data_type_from_parsed_type(Parsed_Type type)
+
+Data_Type eval_expr(const Expr *expr)
 {
     Data_Type result;
-    result.name = type.name;
-    result.is_ptr = type.is_ptr;
-    result.is_array = type.is_array;
-    result.array_len = type.array_len;
-    if(sv_eq(type.name, SV("void"))) {
-        if(!type.is_ptr) {
-            compilation_error(type.loc, "`void` type is only available to use for pointer type");
-        }
-        result.size = 8;
-    } else if(sv_eq(type.name, SV("i64"))) {
-        result.size = 8;
-    } else if(sv_eq(type.name, SV("i32"))) {
-        result.size = 4;
-    } else if(sv_eq(type.name, SV("i16"))) {
-        result.size = 2;
-    } else if(sv_eq(type.name, SV("i8"))) {
-        result.size = 1;
-    } else if(sv_eq(type.name, SV("u64"))) {
-        result.size = 8;
-    } else if(sv_eq(type.name, SV("u32"))) {
-        result.size = 4;
-    } else if(sv_eq(type.name, SV("u16"))) {
-        result.size = 2;
-    } else if(sv_eq(type.name, SV("u8"))) {
-        result.size = 1;
-    } else if(sv_eq(type.name, SV("bool"))) {
-        result.size = 1;
-    } else if(sv_eq(type.name, SV("char"))) {
-        result.size = 1;
-    } else {
-        compilation_error(type.loc, "Unknown type "SV_FMT"\n", SV_ARGV(type.name));
+    switch(expr->type) {
+        case EXPR_INTEGER_LITERAL:
+            {
+                Native_Type_Info info = get_native_type_info(NATIVE_TYPE_I32);
+                result.name = info.name;
+                result.loc = expr->loc;
+                result.is_ptr = false;
+                result.is_array = false;
+                result.array_len = 0;
+            } break;
+        case EXPR_BINARY_OP:
+            {
+                Data_Type leftdt = eval_expr(&expr->as.binop->left);
+                Data_Type rightdt = eval_expr(&expr->as.binop->right);
+                switch(expr->as.binop->type) {
+                    case BINARY_OP_ADD:
+                        {
+                            if(leftdt.is_ptr) {
+                                compilation_error(expr->loc, 
+                                        "Left operand of binary operation where the type is a pointer is "
+                                        "not allowed\n");
+                                compilation_failure();
+                            }
+                        } break;
+                    default:
+                        {
+                            compilation_error(expr->loc, "Failed to evaluate expression's result data type\n");
+                            compilation_failure();
+                        } break;
+                result = leftdt;
+                }
+            } break;
+        default:
+            {
+                compilation_error(expr->loc, "Unevaluated expression\n");
+                compilation_failure();
+            } break;
     }
     return result;
-}
-
-void evaluate_module(Module *module)
-{
 }

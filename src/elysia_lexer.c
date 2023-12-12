@@ -321,7 +321,8 @@ bool cache_next_token(Lexer *lex)
                     while(char_isdigit(lex->cc) || lex->cc == '.') {
                         if(lex->cc == '.') {
                             if(is_float) {
-                                compilation_error(lex->loc, "Invalid syntax another '.' in a float number literal");
+                                compilation_error(lex->loc, "Invalid syntax another '.' in a float number literal\n");
+                                compilation_failure();
                             }
                             is_float = true;
                         }
@@ -382,11 +383,13 @@ Token expect_token(Lexer *lex, Token_Type type)
 {
     Token token = {0};
     if(!next_token(lex, &token)) {
-        compilation_error(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
+        compilation_error(lex->loc, "Reached end of file but expecting token `%s`\n", _token_info[type].name);
+        compilation_failure();
     }
 
     if(token.type != type) {
-        compilation_error(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
+        compilation_error(lex->loc, "Expecting token `%s` found `%s`\n", _token_info[type].name, _token_info[token.type].name);
+        compilation_failure();
     }
 
     return token;
@@ -396,7 +399,8 @@ Token expect_keyword(Lexer *lex, String_View name)
 {
     Token token = expect_token(lex, TOKEN_NAME);
     if(!sv_eq(token.value, name)) {
-        compilation_error(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
+        compilation_error(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level\n", SV_ARGV(name), SV_ARGV(token.value));
+        compilation_failure();
     }
     return token;
 }
@@ -405,11 +409,13 @@ Token expect_peeked_token(Lexer *lex, Token_Type type, size_t i)
 {
     Token token = {0};
     if(!peek_token(lex, &token, i)) {
-        compilation_error(lex->loc, "Reached end of file but expecting token `%s`", _token_info[type].name);
+        compilation_error(lex->loc, "Reached end of file but expecting token `%s`\n", _token_info[type].name);
+        compilation_failure();
     }
 
     if(token.type != type) {
-        compilation_error(lex->loc, "Expecting token `%s` found `%s`", _token_info[type].name, _token_info[token.type].name);
+        compilation_error(lex->loc, "Expecting token `%s` found `%s`\n", _token_info[type].name, _token_info[token.type].name);
+        compilation_failure();
     }
 
     return token;
@@ -419,7 +425,9 @@ Token expect_peeked_keyword(Lexer *lex, String_View name, size_t i)
 {
     Token token = expect_peeked_token(lex, TOKEN_NAME, i);
     if(!sv_eq(token.value, name)) {
-        compilation_error(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level", SV_ARGV(name), SV_ARGV(token.value));
+        compilation_error(lex->loc, "Expecting `"SV_FMT"` found `"SV_FMT"` at tokenization level\n", 
+                SV_ARGV(name), SV_ARGV(token.value));
+        compilation_failure();
     }
     return token;
 }

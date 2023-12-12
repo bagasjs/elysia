@@ -5,6 +5,7 @@
 #include "arena.h"
 #include "elysia.h"
 #include "elysia_lexer.h"
+#include <stdio.h>
 
 typedef enum {
     BINARY_OP_UNKNOWN = 0,
@@ -13,27 +14,39 @@ typedef enum {
     BINARY_OP_OR, BINARY_OP_XOR, BINARY_OP_SHL, BINARY_OP_SHR,
 } Binary_Op_Type;
 
-typedef struct Parsed_Type Parsed_Type;
-typedef struct Parsed_Struct_Field Parsed_Struct_Field;
+typedef struct Data_Type Data_Type;
+typedef struct Struct_Field_Info Struct_Field_Info;
+typedef enum {
+    DATA_TYPE_CMP_NOT_EQUAL = 0,
+    DATA_TYPE_CMP_SIGNATURE_ONLY,
+    DATA_TYPE_CMP_BOTH_POINTER,
+    DATA_TYPE_CMP_BOTH_ARRAY,
+    DATA_TYPE_CMP_EQUAL,
+} Data_Type_Cmp_Result;
 
 typedef struct {
     String_View name;
     struct {
-        Parsed_Struct_Field *data;
+        Struct_Field_Info *data;
         size_t count;
     } fields;
-} Parsed_Struct;
+} Struct_Info;
 
-struct Parsed_Type {
+struct Data_Type {
+    Location loc;
     String_View name;
+    bool is_native;
     bool is_ptr;
     bool is_array;
     size_t array_len;
-    Location loc;
+    union {
+        Native_Type type;
+        Struct_Info _struct;
+    } as;
 };
 
-struct Parsed_Struct_Field {
-    Parsed_Type type;
+struct Struct_Field_Info {
+    Data_Type type;
     String_View name;
 };
 
@@ -63,6 +76,7 @@ struct Expr_Var_Read {
 };
 
 struct Expr_Func_Call {
+    String_View name;
     Location loc;
     Expr_List args;
 };
@@ -117,12 +131,12 @@ struct Stmt_Return {
 
 struct Stmt_Var_Def {
     String_View name;
-    Parsed_Type type;
+    Data_Type type;
 };
 
 struct Stmt_Var_Init {
     String_View name;
-    Parsed_Type type;
+    Data_Type type;
     Expr value;
 };
 
@@ -154,7 +168,7 @@ struct Stmt {
 typedef struct {
     Location loc;
     String_View name;
-    Parsed_Type type;
+    Data_Type type;
 } Func_Param;
 
 typedef struct {
@@ -166,7 +180,7 @@ typedef struct {
     Location loc;
     String_View name;
     Func_Param_List params;
-    Parsed_Type return_type;
+    Data_Type return_type;
     Block body;
 } Func_Def;
 
@@ -182,6 +196,9 @@ Binary_Op_Type binary_op_type_from_token_type(Token_Type type);
 void dump_func_def(const Func_Def *func_def, size_t depth);
 void dump_stmt(const Stmt *stmt, size_t depth);
 void dump_expr(const Expr *expr, size_t depth);
-void dump_parsed_type(const Parsed_Type *type);
+void dump_parsed_type(const Data_Type *type);
+
+void dump_data_type(FILE *f, const Data_Type *type);
+Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b);
 
 #endif // ELYSIA_AST_H_

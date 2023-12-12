@@ -1,5 +1,6 @@
 #include "elysia.h"
 #include "elysia_ast.h"
+#include "sv.h"
 #include <string.h>
 
 typedef struct Stmt_Info {
@@ -60,6 +61,26 @@ Binary_Op_Type binary_op_type_from_token_type(Token_Type type)
         case TOKEN_SHL:  return BINARY_OP_SHL;
         case TOKEN_SHR:  return BINARY_OP_SHR;
         default: return BINARY_OP_UNKNOWN;
+    }
+}
+
+Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b)
+{
+    if(!sv_eq(a->name, b->name))  {
+        return DATA_TYPE_CMP_NOT_EQUAL;
+    }
+
+    if(a->is_ptr != b->is_ptr) {
+        return DATA_TYPE_CMP_SIGNATURE_ONLY;
+    }
+
+    if(a->is_array == b->is_array) {
+        if(a->array_len == b->array_len)
+            return DATA_TYPE_CMP_EQUAL;
+        else
+            return DATA_TYPE_CMP_BOTH_ARRAY;
+    } else {
+        return DATA_TYPE_CMP_BOTH_POINTER;
     }
 }
 
@@ -132,7 +153,23 @@ void dump_func_def(const Func_Def *func_def, size_t depth)
     }
 }
 
-void dump_parsed_type(const Parsed_Type *type)
+void dump_data_type(FILE *f, const Data_Type *type)
+{
+    if(type->is_ptr) {
+        putchar('*');
+    }
+
+    fprintf(f, SV_FMT, SV_ARGV(type->name));
+    if(type->is_array) {
+        if(type->array_len != 0) {
+            fprintf(f, "[%zu]", type->array_len);
+        } else {
+            fprintf(f, "[]");
+        }
+    }
+}
+
+void dump_parsed_type(const Data_Type *type)
 {
     if(type->is_ptr) {
         putchar('*');
@@ -193,3 +230,4 @@ void dump_expr(const Expr *expr, size_t depth)
 {
     DUMP(depth, "- %s\n", expr_infos[expr->type].name);
 }
+

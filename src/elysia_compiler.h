@@ -7,14 +7,6 @@
 #define ELYSIA_SCOPE_VARS_CAPACITY 1024
 
 typedef struct {
-    String_View name;
-    bool is_ptr;
-    bool is_array;
-    size_t size;
-    size_t array_len;
-} Data_Type;
-
-typedef struct {
     const char *name;
     Data_Type type;
 } Compiled_Var;
@@ -26,12 +18,19 @@ struct Scope {
     size_t count;
 };
 
+typedef struct Compiled_Fn {
+    Func_Def def;
+    Scope scope;
+} Compiled_Fn;
+
 typedef struct {
     Scope *scope;
-} Compiler;
+} Generator;
 
-Data_Type data_type_from_parsed_type(Parsed_Type type);
 Compiled_Var get_var_from_scope(Scope *scope, String_View name);
 bool push_var_to_scope(Scope *scope, Compiled_Var var);
+
+void compile_into_x86_64_nasm(const char *file_path, const Module *module);
+Data_Type eval_expr(const Expr *expr);
 
 #endif // ELYSIA_COMPILER_H_

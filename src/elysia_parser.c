@@ -17,7 +17,8 @@ Module parse_module(Arena *arena, Lexer *lex)
         if(token.type == TOKEN_FUNCTION) {
             module.main = parse_func_def(arena, lex);
         } else {
-            compilation_error(token.loc, "Expecting function definition found `"SV_FMT"`", SV_ARGV(token.value));
+            compilation_error(token.loc, "Expecting function definition found `"SV_FMT"`\n", SV_ARGV(token.value));
+            compilation_failure();
         }
     }
 
@@ -33,7 +34,8 @@ Func_Def parse_func_def(Arena *arena, Lexer *lex)
 
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
-        compilation_error(token.loc, "Expecting function body or return type of the function but found end of file");
+        compilation_error(token.loc, "Expecting function body or return type of the function but found end of file\n");
+        compilation_failure();
     }
 
     if(token.type == TOKEN_COLON) {
@@ -49,12 +51,11 @@ Func_Def parse_func_def(Arena *arena, Lexer *lex)
     return result;
 }
 
-
-Parsed_Type parse_data_type(Arena *arena, Lexer *lex)
+Data_Type parse_data_type(Arena *arena, Lexer *lex)
 {
     (void)arena;
     expect_token(lex, TOKEN_COLON);
-    Parsed_Type result = {0};
+    Data_Type result = {0};
     Token token;
     if(peek_token(lex, &token, 0) && token.type == TOKEN_ASTERISK) {
         expect_token(lex, TOKEN_ASTERISK);
@@ -122,6 +123,7 @@ Block parse_block(Arena *arena, Lexer *lex)
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
         compilation_error(lex->loc, "Expecting a block but reached end of file\n");
+        compilation_failure();
     }
 
     while(token.type != TOKEN_RCURLY) {
@@ -129,6 +131,7 @@ Block parse_block(Arena *arena, Lexer *lex)
         push_stmt_to_block(arena, &result, stmt);
         if(!peek_token(lex, &token, 0)) {
             compilation_error(lex->loc, "Expecting a block but reached end of file\n");
+            compilation_failure();
         }
     }
     expect_token(lex, TOKEN_RCURLY);
@@ -141,6 +144,7 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
         compilation_error(lex->loc, "Expecting statement but reached end of file\n");
+        compilation_failure();
     }
 
     Stmt result = {0};
@@ -175,11 +179,12 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
                 String_View name = expect_token(lex, TOKEN_NAME).value;
                 Token token0 = {0};
                 if(!peek_token(lex, &token0, 0)) {
-                    compilation_error(lex->loc, "Expecting something after variable name but found nothing");
+                    compilation_error(lex->loc, "Expecting something after variable name but found nothing\n");
+                    compilation_failure();
                 }
 
                 result.loc = token.loc;
-                Parsed_Type data_type = {0};
+                Data_Type data_type = {0};
                 bool has_data_type = false;
 
                 if(token0.type == TOKEN_COLON) {
@@ -189,7 +194,8 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
 
                 // everything related to data type should have been parsed
                 if(!next_token(lex, &token0)) {
-                    compilation_error(lex->loc, "Expecting something after variable name but found nothing");
+                    compilation_error(lex->loc, "Expecting something after variable name but found nothing\n");
+                    compilation_failure();
                 }
 
                 if(token0.type == TOKEN_ASSIGN) {
@@ -204,7 +210,8 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
                     result.as.var_def.name = name;
                     result.as.var_def.type = data_type;
                 } else {
-                    compilation_error(lex->loc, "Expecting defined variable to have any kind of type anotation");
+                    compilation_error(lex->loc, "Expecting defined variable to have any kind of type anotation\n");
+                    compilation_failure();
                 }
             } break;
         case TOKEN_NAME:
@@ -212,7 +219,8 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
                 String_View name = expect_token(lex, TOKEN_NAME).value;
                 Token token0 = {0};
                 if(!peek_token(lex, &token0, 0)) {
-                    compilation_error(lex->loc, "Expecting something after variable name but found end of file");
+                    compilation_error(lex->loc, "Expecting something after variable name but found end of file\n");
+                    compilation_failure();
                 }
 
                 if(token0.type == TOKEN_ASSIGN) {
@@ -240,8 +248,9 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
         default:
             {
                 compilation_error(lex->loc, 
-                        "Token "SV_FMT" can't start a statement. This should only be happened at compiler development",
+                        "Token "SV_FMT" can't start a statement. This should only be happened at compiler development\n",
                         SV_ARGV(token.value));
+                compilation_failure();
             } break;
     }
 
@@ -272,6 +281,7 @@ Expr parse_expr(Arena *arena, Lexer *lex)
     Token token = {0};
     if(!peek_token(lex, &token, 0)) {
         compilation_error(lex->loc, "Expecting expression but got end of file\n");
+        compilation_failure();
     }
 
     Expr result = {0};
@@ -297,6 +307,7 @@ Expr parse_expr(Arena *arena, Lexer *lex)
                         result.type = EXPR_FUNCALL;
                         result.loc = token.loc;
                         result.as.func_call.loc = ntoken.loc;
+                        result.as.func_call.name = token.value;
                         result.as.func_call.args = parse_func_args(arena, lex);
                     } else {
                         result.type = EXPR_VAR_READ;

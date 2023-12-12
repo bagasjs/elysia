@@ -3,7 +3,9 @@
 #include "elysia_compiler.h"
 #include "elysia_lexer.h"
 #include "elysia_parser.h"
+
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 void usage(FILE *f)
@@ -28,6 +30,28 @@ String_View shift(int *argc, char ***argv, const char *error)
     return sv_from_parts(result, strlen(result));
 }
 
+#define TMPBUF_CAP (32*1024)
+static uint8_t tmpbuf[TMPBUF_CAP] = {0};
+static size_t tmp_usage = 0;
+
+void tmp_reset()
+{
+    for(size_t i = 0; i < TMPBUF_CAP; ++i)
+        tmpbuf[i] = 0;
+    tmp_usage = 0;
+}
+
+char *tmp_sprintf(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char *result = (char *)&tmpbuf[tmp_usage];
+    tmp_usage += vsnprintf(result, TMPBUF_CAP - tmp_usage - 1, fmt, ap) + 1;
+    tmpbuf[tmp_usage - 1] = '\0';
+    va_end(ap);
+    return result;
+}
+
 int main(int argc, char **argv)
 {
     shift(&argc, &argv, "Unreachable");
@@ -50,7 +74,7 @@ int main(int argc, char **argv)
 
         Module mod = parse_module(&arena, &lex);
         dump_func_def(&mod.main, 0);
-        compile_x86_64_nasm("output.asm", &mod);
+        compile_into_x86_64_nasm("output.asm", &mod);
     } else {
         fatal("Please provide a valid subcommand");
     }
