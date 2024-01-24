@@ -35,15 +35,15 @@ typedef struct Compiled_Module {
     } functions;
 } Compiled_Module;
 
-Compiled_Var get_var_from_scope(Scope *scope, String_View name);
-
-bool eval_module(Compiled_Module *result, const Module *module);
+const Compiled_Var *get_var_from_scope(const Scope *scope, String_View name);
+bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type);
 bool push_var_to_scope(Scope *scope, const Compiled_Var var);
+
+Data_Type eval_expr(const Scope *scope, const Expr *expr);
+bool eval_module(Compiled_Module *result, const Module *module);
 bool push_fn_to_module(Compiled_Module *module, const Compiled_Fn fn);
 bool emplace_fn_to_module(Compiled_Module *module, const Func_Def def);
-bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type);
 
 void compile_into_x86_64_nasm(const char *file_path, Compiled_Module *module);
-Data_Type eval_expr(const Expr *expr);
 
 #endif // ELYSIA_COMPILER_H_

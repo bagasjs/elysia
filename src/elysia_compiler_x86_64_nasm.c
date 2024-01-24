@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void compile_expr_into_x86_64_nasm(FILE *f, const Expr expr)
+static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, const Expr expr)
 {
     switch(expr.type) {
         case EXPR_INTEGER_LITERAL:
@@ -15,11 +15,15 @@ static void compile_expr_into_x86_64_nasm(FILE *f, const Expr expr)
             {
                 fprintf(f, "    call "SV_FMT"\n", SV_ARGV(expr.as.func_call.name));
             } break;
+        case EXPR_VAR_READ:
+            {
+                fatal("No implementation for compile_expr_into_x86_64_nasm in case of EXPR_VAR_READ");
+            } break;
         case EXPR_BINARY_OP:
             {
-                compile_expr_into_x86_64_nasm(f, expr.as.binop->right);
+                compile_expr_into_x86_64_nasm(module, f, expr.as.binop->right);
                 fprintf(f, "    mov rbx, rax\n");
-                compile_expr_into_x86_64_nasm(f, expr.as.binop->left);
+                compile_expr_into_x86_64_nasm(module, f, expr.as.binop->left);
                 switch(expr.as.binop->type) {
                     case BINARY_OP_ADD:
                         {
@@ -34,12 +38,13 @@ static void compile_expr_into_x86_64_nasm(FILE *f, const Expr expr)
             } break;
         default:
             {
-                fatal("Unreachable");
+                compilation_error(expr.loc, "Unreachable expression type");
+                compilation_failure();
             } break;
     }
 }
 
-static void compile_stmt_into_x86_64_nasm(FILE *f, Scope *scope, const Stmt stmt)
+static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scope *scope, const Stmt stmt)
 {
     switch(stmt.type) {
         case STMT_VAR_DEF:
@@ -49,7 +54,7 @@ static void compile_stmt_into_x86_64_nasm(FILE *f, Scope *scope, const Stmt stmt
         case STMT_VAR_INIT:
             {
                 uint32_t addr = scope->vars.count;
-                Data_Type variable_type = eval_expr(&stmt.as.var_init.value);
+                Data_Type variable_type = eval_expr(scope, &stmt.as.var_init.value);
                 if(!stmt.as.var_init.infer_type) {
                     if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
                         compilation_error(stmt.loc, LOC_FMT" Variable initialization "SV_FMT" expecting value with type `",
@@ -63,7 +68,7 @@ static void compile_stmt_into_x86_64_nasm(FILE *f, Scope *scope, const Stmt stmt
                 }
                 emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type);
 
-                compile_expr_into_x86_64_nasm(f,  stmt.as.var_init.value);
+                compile_expr_into_x86_64_nasm(module, f, stmt.as.var_init.value);
                 fprintf(f, "    mov QWORD[rbp-%u], rax\n", (addr + 1) * 8);
             } break;
         case STMT_VAR_ASSIGN:
@@ -81,16 +86,16 @@ static void compile_stmt_into_x86_64_nasm(FILE *f, Scope *scope, const Stmt stmt
     }
 }
 
-static void compile_func_def_into_x86_64_nasm(FILE *f, Compiled_Module *module, Compiled_Fn *fn)
+static void compile_func_def_into_x86_64_nasm(Compiled_Module *module, FILE *f, Compiled_Fn *fn)
 {
     fprintf(f, SV_FMT":\n", SV_ARGV(fn->def.name));
     fprintf(f, "    push rbp\n");
     fprintf(f, "    mov rbp, rsp\n");
     for(size_t i = 0; i < fn->def.body.count; ++i) {
         Stmt stmt = fn->def.body.data[i];
-        compile_stmt_into_x86_64_nasm(f, &fn->scope, stmt);
+        compile_stmt_into_x86_64_nasm(module, f, &fn->scope, stmt);
         if(fn->def.body.data[i].type == STMT_RETURN) {
-            Data_Type return_type = eval_expr(&stmt.as._return.value);
+            Data_Type return_type = eval_expr(&fn->scope, &stmt.as._return.value);
             Data_Type_Cmp_Result comparison = compare_data_type(&return_type, &fn->def.return_type);
             if(comparison != DATA_TYPE_CMP_EQUAL) {
                 fprintf(stderr, LOC_FMT" Function "SV_FMT" expecting return type of `",
@@ -101,7 +106,7 @@ static void compile_func_def_into_x86_64_nasm(FILE *f, Compiled_Module *module, 
                 fprintf(stderr, "`\n");
                 exit(EXIT_FAILURE);
             }
-            compile_expr_into_x86_64_nasm(f, stmt.as._return.value);
+            compile_expr_into_x86_64_nasm(module, f, stmt.as._return.value);
             break;
         }
     }
@@ -119,6 +124,6 @@ void compile_into_x86_64_nasm(const char *file_path, Compiled_Module *module)
     fprintf(f, "section .text\n");
     fprintf(f, "global main\n");
     for(uint32_t i = 0; i < module->functions.count; ++i) {
-        compile_func_def_into_x86_64_nasm(f, module, &module->functions.data[i]);
+        compile_func_def_into_x86_64_nasm(module, f, &module->functions.data[i]);
     }
 }

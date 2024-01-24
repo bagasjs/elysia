@@ -4,6 +4,17 @@
 #include "elysia_compiler.h"
 #include <stdio.h>
 
+const Compiled_Var *get_var_from_scope(const Scope *scope, String_View name)
+{
+    for(size_t i = 0; i < scope->vars.count; ++i) {
+        const Compiled_Var *var = &scope->vars.data[i];
+        if(sv_eq(name, var->name)) {
+            return var;
+        }
+    }
+    return NULL;
+}
+
 bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type)
 {
     if(scope->vars.count + 1 > ELYSIA_SCOPE_VARS_CAPACITY) {
@@ -39,7 +50,7 @@ bool emplace_fn_to_module(Compiled_Module *module, const Func_Def def)
     return true;
 }
 
-Data_Type eval_expr(const Expr *expr)
+Data_Type eval_expr(const Scope *scope, const Expr *expr)
 {
     Data_Type result;
     switch(expr->type) {
@@ -54,8 +65,8 @@ Data_Type eval_expr(const Expr *expr)
             } break;
         case EXPR_BINARY_OP:
             {
-                Data_Type leftdt = eval_expr(&expr->as.binop->left);
-                Data_Type rightdt = eval_expr(&expr->as.binop->right);
+                Data_Type leftdt = eval_expr(scope, &expr->as.binop->left);
+                Data_Type rightdt = eval_expr(scope, &expr->as.binop->right);
                 switch(expr->as.binop->type) {
                     case BINARY_OP_ADD:
                         {
@@ -73,6 +84,15 @@ Data_Type eval_expr(const Expr *expr)
                         } break;
                 result = leftdt;
                 }
+            } break;
+        case EXPR_VAR_READ:
+            {
+                String_View var_name = expr->as.var_read.name;
+                const Compiled_Var *var = get_var_from_scope(scope, var_name);
+                if(var == NULL) {
+                    compilation_error(expr->loc, "Failed to read into unknown variable\n");
+                }
+                result = var->type;
             } break;
         default:
             {
