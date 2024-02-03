@@ -2,6 +2,7 @@
 #include "elysia_parser.h"
 #include "elysia_ast.h"
 #include "elysia_lexer.h"
+#include "elysia_types.h"
 
 #include <assert.h>
 
@@ -72,6 +73,13 @@ Data_Type parse_data_type(Arena *arena, Lexer *lex)
             result.array_len = sv_to_int(token.value);
         }
         expect_token(lex, TOKEN_RBRACK);
+    }
+
+    for(Native_Type type = NATIVE_TYPE_VOID; type < COUNT_NATIVE_TYPES; ++type) {
+        if(sv_eq(result.name, get_native_type_info(type).name)) {
+            result.is_native = true;
+            result.as.native = type;
+        }
     }
 
     return result;

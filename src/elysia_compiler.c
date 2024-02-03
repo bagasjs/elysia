@@ -15,7 +15,7 @@ const Compiled_Var *get_var_from_scope(const Scope *scope, String_View name)
     return NULL;
 }
 
-bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type)
+bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type, size_t address)
 {
     if(scope->vars.count + 1 > ELYSIA_SCOPE_VARS_CAPACITY) {
         return false;
@@ -23,7 +23,7 @@ bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type)
 
     scope->vars.data[scope->vars.count].name = name;
     scope->vars.data[scope->vars.count].type = type;
-    scope->vars.data[scope->vars.count].index = scope->vars.count;
+    scope->vars.data[scope->vars.count].address = address;
     scope->vars.count += 1;
     return true;
 }

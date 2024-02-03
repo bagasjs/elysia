@@ -64,26 +64,6 @@ Binary_Op_Type binary_op_type_from_token_type(Token_Type type)
     }
 }
 
-Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b)
-{
-    if(!sv_eq(a->name, b->name))  {
-        return DATA_TYPE_CMP_NOT_EQUAL;
-    }
-
-    if(a->is_ptr != b->is_ptr) {
-        return DATA_TYPE_CMP_SIGNATURE_ONLY;
-    }
-
-    if(a->is_array == b->is_array) {
-        if(a->array_len == b->array_len)
-            return DATA_TYPE_CMP_EQUAL;
-        else
-            return DATA_TYPE_CMP_BOTH_ARRAY;
-    } else {
-        return DATA_TYPE_CMP_BOTH_POINTER;
-    }
-}
-
 void push_param_to_param_list(Arena *arena, Func_Param_List *params, Func_Param param)
 {
     if(params->count >= params->capacity) {

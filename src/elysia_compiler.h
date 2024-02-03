@@ -9,7 +9,7 @@
 
 typedef struct {
     String_View name;
-    size_t index;
+    size_t address;
     Data_Type type;
 } Compiled_Var;
 
@@ -20,6 +20,7 @@ struct Scope {
         Compiled_Var data[ELYSIA_SCOPE_VARS_CAPACITY];
         uint32_t count;
     } vars;
+    size_t stack_usage;
 };
 
 typedef struct Compiled_Fn {
@@ -36,7 +37,7 @@ typedef struct Compiled_Module {
 } Compiled_Module;
 
 const Compiled_Var *get_var_from_scope(const Scope *scope, String_View name);
-bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type);
+bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type, size_t address);
 bool push_var_to_scope(Scope *scope, const Compiled_Var var);
 
 Data_Type eval_expr(const Scope *scope, const Expr *expr);
