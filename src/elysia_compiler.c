@@ -1,5 +1,6 @@
 #include "elysia.h"
 #include "elysia_ast.h"
+#include "elysia_types.h"
 #include "sv.h"
 #include "elysia_compiler.h"
 #include <stdio.h>
@@ -62,6 +63,8 @@ Data_Type eval_expr(const Scope *scope, const Expr *expr)
                 result.is_ptr = false;
                 result.is_array = false;
                 result.array_len = 0;
+                result.is_native = true;
+                result.as.native = NATIVE_TYPE_I32;
             } break;
         case EXPR_BINARY_OP:
             {

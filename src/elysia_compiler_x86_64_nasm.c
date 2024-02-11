@@ -61,19 +61,16 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
                 Data_Type variable_type = eval_expr(scope, &stmt.as.var_init.value);
                 if(!stmt.as.var_init.infer_type) {
                     if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
-                        compilation_error(stmt.loc, "Variable initialization with name `"
-                                SV_FMT"` expecting value with type `",
-                                SV_ARGV(stmt.as.var_init.name));
-                        dump_data_type(stderr, &stmt.as.var_init.type);
-                        fprintf(stderr, "` but found `");
-                        dump_data_type(stderr, &variable_type);
-                    } else {
-                        variable_type = stmt.as.var_init.type;
+                        compilation_type_error(stmt.loc, &variable_type, &stmt.as.var_init.type, 
+                                " while assigning value to variable "SV_FMT, SV_ARGV(stmt.as.var_init.name));
                     }
                 }
-                size_t variable_size = get_data_type_size(&variable_type);
+                size_t variable_size = 0;
+                // printf("Variable "SV_FMT" with %s type "SV_FMT" with size %zu\n", 
+                //         SV_ARGV(stmt.as.var_init.name), variable_type.is_native ? "native" : "non-native", 
+                //         SV_ARGV(variable_type.name), variable_size);
+                variable_size = get_data_type_size(&variable_type);
                 scope->stack_usage += variable_size;
-                // printf("Variable "SV_FMT" with size "SV_FMT" with size %zu\n", SV_ARGV(stmt.as.var_init.name), SV_ARGV(variable_type.name), variable_size);
                 emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type, addr);
 
                 compile_expr_into_x86_64_nasm(module, f, scope, stmt.as.var_init.value);
@@ -84,13 +81,8 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
                 const Compiled_Var *var = get_var_from_scope(scope, stmt.as.var_assign.name);
                 Data_Type variable_type = eval_expr(scope, &stmt.as.var_assign.value);
                 if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
-                    compilation_type_error(stmt.loc, &var->type, &variable_type, " while assigning value to variable "SV_FMT, 
+                    compilation_type_error(stmt.loc, &variable_type, &var->type, " while assigning value to variable "SV_FMT, 
                             SV_ARGV(stmt.as.var_assign.name));
-                    compilation_error(stmt.loc, "Variable assignment to `"SV_FMT"` expecting value with type `",
-                            SV_ARGV(stmt.as.var_assign.name));
-                    dump_data_type(stderr, &var->type);
-                    fprintf(stderr, "` but found `");
-                    dump_data_type(stderr, &variable_type);
                 }
                 compile_expr_into_x86_64_nasm(module, f, scope, stmt.as.var_assign.value);
                 fprintf(f, "    mov QWORD[rbp-%zu], rax\n", var->address);
@@ -119,13 +111,8 @@ static void compile_func_def_into_x86_64_nasm(Compiled_Module *module, FILE *f, 
             Data_Type return_type = eval_expr(&fn->scope, &stmt.as._return.value);
             Data_Type_Cmp_Result comparison = compare_data_type(&return_type, &fn->def.return_type);
             if(comparison != DATA_TYPE_CMP_EQUAL) {
-                fprintf(stderr, LOC_FMT" Function "SV_FMT" expecting return type of `",
-                        LOC_ARGV(stmt.loc), SV_ARGV(fn->def.name));
-                dump_data_type(stderr, &fn->def.return_type);
-                fprintf(stderr, "` but found `");
-                dump_data_type(stderr, &return_type);
-                fprintf(stderr, "`\n");
-                exit(EXIT_FAILURE);
+                compilation_type_error(stmt.loc, &return_type, &fn->def.return_type, 
+                        " Function "SV_FMT" expecting return type of `", SV_ARGV(fn->def.name));
             }
             compile_expr_into_x86_64_nasm(module, f, &fn->scope, stmt.as._return.value);
             break;

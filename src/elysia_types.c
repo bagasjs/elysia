@@ -1,4 +1,7 @@
+#include "elysia.h"
 #include "elysia_ast.h"
+#include <stdarg.h>
+#include <stdlib.h>
 
 static Native_Type_Info native_type_infos[COUNT_NATIVE_TYPES] = {
     [NATIVE_TYPE_VOID] = { .type = NATIVE_TYPE_VOID, .name = SV_STATIC("void"), .size = 0 },
@@ -36,7 +39,7 @@ size_t get_data_type_size(const Data_Type *data_type)
         compilation_note(data_type->loc, "Initialization of variable with array data type is not available for now");
         compilation_error(data_type->loc, "Due to unimplemented feature compilation will be terminated");
         compilation_failure();
-        return 0;
+        return sizeof(void*);
     }
 
     if(!data_type->is_native) { // struct data type
@@ -72,6 +75,23 @@ Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b)
     }
 }
 
-void compilation_type_error(Location at, Data_Type expectation, Data_Type reality, const char *additional_message)
+#define DATA_TYPE_FMT "%s"SV_FMT"%s"
+#define DATA_TYPE_ARGV(dt) ((dt)->is_ptr ? "*" : ""), SV_ARGV((dt)->name), ((dt)->is_array ? "[]" : "")
+
+void compilation_type_error(Location at, const Data_Type *expectation, const Data_Type *reality, const char *reason, ...)
 {
+    if(at.row == 0) {
+        fprintf(stderr, SV_FMT"Error: ", SV_ARGV(at.file_path));
+    } else {
+        fprintf(stderr, SV_FMT":%zu:%zu: error: ", SV_ARGV(at.file_path), at.row, at.col);
+    }
+
+    fprintf(stderr, "Expecting type "DATA_TYPE_FMT" but found "DATA_TYPE_FMT" due to ",
+            DATA_TYPE_ARGV(expectation), DATA_TYPE_ARGV(reality));
+
+    va_list args;
+    va_start(args, reason);
+    vfprintf(stderr, reason, args);
+    va_end(args);
+    exit(EXIT_FAILURE);
 }

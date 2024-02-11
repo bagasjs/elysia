@@ -162,6 +162,9 @@ void dump_parsed_type(const Data_Type *type)
             DUMP(0, "[]");
         }
     }
+    if(type->is_native) {
+        printf(" (native)");
+    }
 }
 
 void dump_stmt(const Stmt *stmt, size_t depth)

@@ -1,6 +1,6 @@
 fn main(argc: i32, argv: *char[]): i32 {
     var x = 34;
     var y = 35;
-    var z: u32 = x + y;
+    var z: i32 = x + y;
     return z;
 }

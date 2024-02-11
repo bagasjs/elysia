@@ -3,6 +3,7 @@
 #include "elysia_compiler.h"
 #include "elysia_lexer.h"
 #include "elysia_parser.h"
+#include "elysia_types.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -35,10 +36,10 @@ int main(int argc, char **argv)
     shift(&argc, &argv, "Unreachable");
 
     String_View subcommand = shift(&argc, &argv, "Please provide a subcommand");
+    Arena arena = {0};
+    Lexer lex;
+    lex.i = 0;
     if(sv_eq(subcommand, SV("com"))) {
-        Arena arena = {0};
-        Lexer lex;
-        lex.i = 0;
         String_View source_path = shift(&argc, &argv, "Please provide the source file path");
         const char *source_data = arena_load_file_data(&arena, source_path.data);
         if(!source_data) {
@@ -58,6 +59,30 @@ int main(int argc, char **argv)
         } else {
             fprintf(stderr, "Failed to evaluate the program\n");
             compilation_failure();
+        }
+    } else if(sv_eq(subcommand, SV("tokenize"))) {
+        String_View source_path = shift(&argc, &argv, "Please provide the source file path");
+        const char *source_data = arena_load_file_data(&arena, source_path.data);
+        if(!source_data) {
+            fatal("Failed to load source file data");
+        }
+
+        String_View source = sv_from_parts(source_data, strlen(source_data));
+        if(!init_lexer(&lex, source_path, source)) {
+            fatal("Failed to initialize the lexer");
+        }
+
+        Token token = {0};
+        while(next_token(&lex, &token)) {
+            dump_token(token); 
+        }
+    } else if(sv_eq(subcommand, SV("test"))) {
+        String_View typename = SV("i32");
+        for(int i = 0; i < COUNT_NATIVE_TYPES; ++i) {
+            Native_Type_Info typeinfo = get_native_type_info(i);
+            if(sv_eq(typename, typeinfo.name)) {
+                printf("Native type "SV_FMT"\n", SV_ARGV(typename));
+            }
         }
     } else {
         fatal("Please provide a valid subcommand");
