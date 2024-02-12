@@ -55,6 +55,8 @@ struct Data_Type {
         Native_Type native;
         Struct_Info _struct;
     } as;
+
+    size_t bytesize;
 };
 
 struct Struct_Field_Info {
@@ -70,6 +72,6 @@ Native_Type_Info *find_native_type_info_by_name(String_View name);
 void dump_data_type(FILE *f, const Data_Type *type);
 void dump_parsed_type(const Data_Type *type);
 Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b);
-size_t get_data_type_size(const Data_Type *data_type);
+size_t get_data_type_size(Data_Type *data_type);
 
 #endif // ELYSIA_TYPES_H_

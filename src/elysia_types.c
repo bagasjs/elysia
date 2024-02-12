@@ -1,5 +1,6 @@
 #include "elysia.h"
 #include "elysia_ast.h"
+#include "elysia_types.h"
 #include <stdarg.h>
 #include <stdlib.h>
 
@@ -32,8 +33,7 @@ Native_Type_Info *find_native_type_info_by_name(String_View name)
     return NULL;
 }
 
-size_t get_data_type_size(const Data_Type *data_type)
-{
+size_t _get_data_type_size(const Data_Type *data_type) {
     if(data_type->is_ptr) return sizeof(void*);
     if(data_type->is_array) {
         compilation_note(data_type->loc, "Initialization of variable with array data type is not available for now");
@@ -53,6 +53,14 @@ size_t get_data_type_size(const Data_Type *data_type)
 
     Native_Type_Info info = get_native_type_info(data_type->as.native);
     return info.size;
+}
+
+size_t get_data_type_size(Data_Type *data_type) {
+    if(data_type->bytesize == 0 && !data_type->is_native && data_type->as.native == NATIVE_TYPE_VOID) {
+        size_t result = _get_data_type_size(data_type);
+        data_type->bytesize = result;
+    }
+    return data_type->bytesize;
 }
 
 Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b)

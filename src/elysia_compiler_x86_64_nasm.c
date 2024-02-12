@@ -10,7 +10,7 @@ static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
     switch(expr.type) {
         case EXPR_INTEGER_LITERAL:
             {
-                fprintf(f, "    mov rax, %ld\n", expr.as.literal_int);
+                fprintf(f, "    mov eax, %ld\n", expr.as.literal_int);
             } break;
         case EXPR_FUNCALL:
             {
@@ -19,17 +19,17 @@ static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
         case EXPR_VAR_READ:
             {
                 const Compiled_Var *var = get_var_from_scope(scope, expr.as.var_read.name);
-                fprintf(f, "    mov rax, QWORD[rbp-%zu]\n", var->address);
+                fprintf(f, "    mov eax, DWORD[rbp-%zu]\n", var->address);
             } break;
         case EXPR_BINARY_OP:
             {
                 compile_expr_into_x86_64_nasm(module, f, scope, expr.as.binop->right);
-                fprintf(f, "    mov rbx, rax\n");
+                fprintf(f, "    mov ebx, eax\n");
                 compile_expr_into_x86_64_nasm(module, f, scope, expr.as.binop->left);
                 switch(expr.as.binop->type) {
                     case BINARY_OP_ADD:
                         {
-                            fprintf(f, "    add rax, rbx\n");
+                            fprintf(f, "    add eax, ebx\n");
                         } break;
                     default:
                         {
@@ -74,7 +74,7 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
                 emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type, addr);
 
                 compile_expr_into_x86_64_nasm(module, f, scope, stmt.as.var_init.value);
-                fprintf(f, "    mov QWORD[rbp-%zu], rax\n", addr);
+                fprintf(f, "    mov DWORD[rbp-%zu], eax\n", addr);
             } break;
         case STMT_VAR_ASSIGN:
             {
@@ -85,7 +85,7 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
                             SV_ARGV(stmt.as.var_assign.name));
                 }
                 compile_expr_into_x86_64_nasm(module, f, scope, stmt.as.var_assign.value);
-                fprintf(f, "    mov QWORD[rbp-%zu], rax\n", var->address);
+                fprintf(f, "    mov DWORD[rbp-%zu], eax\n", var->address);
             } break;
         case STMT_RETURN:
             {
