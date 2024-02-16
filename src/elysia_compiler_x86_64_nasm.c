@@ -66,11 +66,11 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
                     }
                 }
                 size_t variable_size = 0;
-                // printf("Variable "SV_FMT" with %s type "SV_FMT" with size %zu\n", 
-                //         SV_ARGV(stmt.as.var_init.name), variable_type.is_native ? "native" : "non-native", 
-                //         SV_ARGV(variable_type.name), variable_size);
                 variable_size = get_data_type_size(&variable_type);
                 scope->stack_usage += variable_size;
+                printf("Variable "SV_FMT" with %s type "SV_FMT" with size %zu\n", 
+                        SV_ARGV(stmt.as.var_init.name), variable_type.is_native ? "native" : "non-native", 
+                        SV_ARGV(variable_type.name), variable_size);
                 emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type, addr);
 
                 compile_expr_into_x86_64_nasm(module, f, scope, stmt.as.var_init.value);

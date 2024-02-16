@@ -65,6 +65,7 @@ Data_Type eval_expr(const Scope *scope, const Expr *expr)
                 result.array_len = 0;
                 result.is_native = true;
                 result.as.native = NATIVE_TYPE_I32;
+                result.bytesize = 0;
             } break;
         case EXPR_BINARY_OP:
             {
