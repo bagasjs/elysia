@@ -1,0 +1,3 @@
+[submodule "vendors/qbe"]
+	path = vendors/qbe
+	url = https://github.com/bagasjs/qbe.git

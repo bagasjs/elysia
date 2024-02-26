@@ -12,7 +12,19 @@ SOURCES=(
     "./src/elysia_types.c"
     "./src/elysia_lexer.c"
     "./src/elysia_compiler.c"
-    "./src/elysia_compiler_x86_64_nasm.c"
+    "./src/elysia_compiler_backend_x86_64_nasm.c"
+
+    "./src/main.c"
+)
+
+SOURCES_QBE=(
+    "./src/elysia.c"
+    "./src/elysia_ast.c"
+    "./src/elysia_parser.c"
+    "./src/elysia_types.c"
+    "./src/elysia_lexer.c"
+    "./src/elysia_compiler.c"
+    "./src/elysia_compiler_backend_qbe.c"
 
     "./src/main.c"
 )
@@ -41,6 +53,8 @@ if [ ! -d $BUILD_DIR ]; then
     mkdir $BUILD_DIR
 fi
 
+compile_sources "${SOURCES_QBE[@]}"
+mv "$BUILD_DIR/$TARGET" "$BUILD_DIR/${TARGET}-qbe"
 compile_sources "${SOURCES[@]}"
 
 

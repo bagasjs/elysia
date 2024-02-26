@@ -45,6 +45,6 @@ bool eval_module(Compiled_Module *result, const Module *module);
 bool push_fn_to_module(Compiled_Module *module, const Compiled_Fn fn);
 bool emplace_fn_to_module(Compiled_Module *module, const Func_Def def);
 
-void compile_into_x86_64_nasm(const char *file_path, Compiled_Module *module);
+void compile_module_to_file(const char *file_path, Compiled_Module *module);
 
 #endif // ELYSIA_COMPILER_H_
