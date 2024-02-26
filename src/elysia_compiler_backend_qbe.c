@@ -5,12 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scope *scope, const Expr expr)
+static void compile_expr_into_qbe(Compiled_Module *module, FILE *f, Scope *scope, const Expr expr)
 {
     switch(expr.type) {
         case EXPR_INTEGER_LITERAL:
             {
-                fprintf(f, "    mov eax, %ld\n", expr.as.literal_int);
+                fprintf(f, "    %%_1 =w copy %ld # %s:%d\n", expr.as.literal_int, __FILE__, __LINE__);
             } break;
         case EXPR_FUNCALL:
             {
@@ -19,17 +19,17 @@ static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
         case EXPR_VAR_READ:
             {
                 const Compiled_Var *var = get_var_from_scope(scope, expr.as.var_read.name);
-                fprintf(f, "    mov eax, DWORD[rbp-%zu]\n", var->address);
+                fprintf(f, "    %%_1 =w copy %%"SV_FMT" # %s:%d\n", SV_ARGV(var->name), __FILE__, __LINE__);
             } break;
         case EXPR_BINARY_OP:
             {
-                compile_expr_into_x86_64_nasm(module, f, scope, expr.as.binop->right);
-                fprintf(f, "    mov ebx, eax\n");
-                compile_expr_into_x86_64_nasm(module, f, scope, expr.as.binop->left);
+                compile_expr_into_qbe(module, f, scope, expr.as.binop->right);
+                fprintf(f, "    %%_2 =w copy %%_1 # %s:%d\n", __FILE__, __LINE__);
+                compile_expr_into_qbe(module, f, scope, expr.as.binop->left);
                 switch(expr.as.binop->type) {
                     case BINARY_OP_ADD:
                         {
-                            fprintf(f, "    add eax, ebx\n");
+                            fprintf(f, "    %%_1 =w add %%_1, %%_2 # %s:%d\n", __FILE__, __LINE__);
                         } break;
                     default:
                         {
@@ -46,7 +46,7 @@ static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
     }
 }
 
-static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scope *scope, const Stmt stmt)
+static void compile_stmt_into_qbe(Compiled_Module *module, FILE *f, Scope *scope, const Stmt stmt)
 {
     switch(stmt.type) {
         case STMT_VAR_DEF:
@@ -73,8 +73,8 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
                         SV_ARGV(variable_type.name), variable_size);
                 emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type, addr);
 
-                compile_expr_into_x86_64_nasm(module, f, scope, stmt.as.var_init.value);
-                fprintf(f, "    mov DWORD[rbp-%zu], eax\n", addr);
+                compile_expr_into_qbe(module, f, scope, stmt.as.var_init.value);
+                fprintf(f, "    %%"SV_FMT" =w copy %%_1 # %s:%d\n", SV_ARGV(stmt.as.var_init.name), __FILE__, __LINE__);
             } break;
         case STMT_VAR_ASSIGN:
             {
@@ -84,12 +84,12 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
                     compilation_type_error(stmt.loc, &variable_type, &var->type, " while assigning value to variable "SV_FMT, 
                             SV_ARGV(stmt.as.var_assign.name));
                 }
-                compile_expr_into_x86_64_nasm(module, f, scope, stmt.as.var_assign.value);
-                fprintf(f, "    mov DWORD[rbp-%zu], eax\n", var->address);
+                compile_expr_into_qbe(module, f, scope, stmt.as.var_assign.value);
+                fprintf(f, "    %%"SV_FMT" =w copy %%_1 # %s:%d\n", SV_ARGV(stmt.as.var_init.name), __FILE__, __LINE__);
             } break;
         case STMT_RETURN:
             {
-                // Nothing will be handled by compile_func_def_into_x86_64_nasm
+                // Nothing will be handled by compile_func_def_into_qbe
             } break;
         default:
             {
@@ -98,15 +98,13 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
     }
 }
 
-static void compile_func_def_into_x86_64_nasm(Compiled_Module *module, FILE *f, Compiled_Fn *fn)
+static void compile_func_def_into_qbe(Compiled_Module *module, FILE *f, Compiled_Fn *fn)
 {
-    fprintf(f, SV_FMT":\n", SV_ARGV(fn->def.name));
-    fprintf(f, "    push rbp\n");
-    fprintf(f, "    mov rbp, rsp\n");
-    fn->scope.stack_usage += 8;
+    fprintf(f, "export function w $"SV_FMT"() {\n", SV_ARGV(fn->def.name));
+    fprintf(f, "@start\n");
     for(size_t i = 0; i < fn->def.body.count; ++i) {
         Stmt stmt = fn->def.body.data[i];
-        compile_stmt_into_x86_64_nasm(module, f, &fn->scope, stmt);
+        compile_stmt_into_qbe(module, f, &fn->scope, stmt);
         if(fn->def.body.data[i].type == STMT_RETURN) {
             Data_Type return_type = eval_expr(&fn->scope, &stmt.as._return.value);
             Data_Type_Cmp_Result comparison = compare_data_type(&return_type, &fn->def.return_type);
@@ -114,24 +112,21 @@ static void compile_func_def_into_x86_64_nasm(Compiled_Module *module, FILE *f, 
                 compilation_type_error(stmt.loc, &return_type, &fn->def.return_type, 
                         " Function "SV_FMT" expecting return type of `", SV_ARGV(fn->def.name));
             }
-            compile_expr_into_x86_64_nasm(module, f, &fn->scope, stmt.as._return.value);
+            compile_expr_into_qbe(module, f, &fn->scope, stmt.as._return.value);
             break;
         }
     }
-    fprintf(f, "    pop rbp\n");
-    fprintf(f, "    ret\n");
+    fprintf(f, "    ret %%_1\n}\n");
 }
 
-void compile_into_x86_64_nasm(const char *file_path, Compiled_Module *module)
+void compile_module_to_file(const char *file_path, Compiled_Module *module)
 {
     FILE *f = fopen(file_path, "w");
     if(!f) {
         fatal("Failed to open file file %s", file_path);
     }
 
-    fprintf(f, "section .text\n");
-    fprintf(f, "global main\n");
     for(uint32_t i = 0; i < module->functions.count; ++i) {
-        compile_func_def_into_x86_64_nasm(module, f, &module->functions.data[i]);
+        compile_func_def_into_qbe(module, f, &module->functions.data[i]);
     }
 }

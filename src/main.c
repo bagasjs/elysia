@@ -55,7 +55,7 @@ int main(int argc, char **argv)
         dump_func_def(&mod.main, 0);
         Compiled_Module *module = arena_alloc(&arena, sizeof(Compiled_Module));
         if(eval_module(module, &mod)) {
-            compile_into_x86_64_nasm("output.asm", module);
+            compile_module_to_file("output.asm", module);
         } else {
             fprintf(stderr, "Failed to evaluate the program\n");
             compilation_failure();
