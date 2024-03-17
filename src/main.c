@@ -40,7 +40,22 @@ int main(int argc, char **argv)
     Lexer lex;
     lex.i = 0;
     if(sv_eq(subcommand, SV("com"))) {
-        String_View source_path = shift(&argc, &argv, "Please provide the source file path");
+        String_View output_path = SV("output.asm");
+        String_View source_path = {0};
+        while(argc > 0) {
+            String_View item = shift(&argc, &argv, "Unreachable");
+            if(sv_eq(item, SV("-o"))) {
+                output_path = shift(&argc, &argv, "Please provide the argument for `-o` flag");
+            } else if(source_path.count == 0) {
+                source_path = item;
+            }
+        }
+
+        if(source_path.count <= 0) {
+            usage(stderr);
+            fatal("Please provide the source file path");
+        }
+
         const char *source_data = arena_load_file_data(&arena, source_path.data);
         if(!source_data) {
             fatal("Failed to load source file data");
@@ -55,7 +70,7 @@ int main(int argc, char **argv)
         dump_func_def(&mod.main, 0);
         Compiled_Module *module = arena_alloc(&arena, sizeof(Compiled_Module));
         if(eval_module(module, &mod)) {
-            compile_module_to_file("output.asm", module);
+            compile_module_to_file(output_path.data, module);
         } else {
             fprintf(stderr, "Failed to evaluate the program\n");
             compilation_failure();
