@@ -86,7 +86,7 @@ Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b)
 #define DATA_TYPE_FMT "%s"SV_FMT"%s"
 #define DATA_TYPE_ARGV(dt) ((dt)->is_ptr ? "*" : ""), SV_ARGV((dt)->name), ((dt)->is_array ? "[]" : "")
 
-void compilation_type_error(Location at, const Data_Type *expectation, const Data_Type *reality, const char *reason, ...)
+void compilation_type_error(Location at, const Data_Type *expectation, const Data_Type *reality, const char *additional, ...)
 {
     if(at.row == 0) {
         fprintf(stderr, SV_FMT"Error: ", SV_ARGV(at.file_path));
@@ -94,12 +94,12 @@ void compilation_type_error(Location at, const Data_Type *expectation, const Dat
         fprintf(stderr, SV_FMT":%zu:%zu: error: ", SV_ARGV(at.file_path), at.row, at.col);
     }
 
-    fprintf(stderr, "Expecting type "DATA_TYPE_FMT" but found "DATA_TYPE_FMT" due to ",
+    fprintf(stderr, "Expecting type "DATA_TYPE_FMT" but found "DATA_TYPE_FMT" ",
             DATA_TYPE_ARGV(expectation), DATA_TYPE_ARGV(reality));
 
     va_list args;
-    va_start(args, reason);
-    vfprintf(stderr, reason, args);
+    va_start(args, additional);
+    vfprintf(stderr, additional, args);
     va_end(args);
     exit(EXIT_FAILURE);
 }

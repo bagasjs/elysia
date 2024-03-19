@@ -5,10 +5,10 @@
 #include "elysia_compiler.h"
 #include <stdio.h>
 
-const Compiled_Var *get_var_from_scope(const Scope *scope, String_View name)
+const Evaluated_Var *get_var_from_scope(const Scope *scope, String_View name)
 {
     for(size_t i = 0; i < scope->vars.count; ++i) {
-        const Compiled_Var *var = &scope->vars.data[i];
+        const Evaluated_Var *var = &scope->vars.data[i];
         if(sv_eq(name, var->name)) {
             return var;
         }
@@ -29,7 +29,7 @@ bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type, size_t
     return true;
 }
 
-bool push_fn_to_module(Compiled_Module *module, const Compiled_Fn fn)
+bool push_fn_to_module(Evaluated_Module *module, const Evaluated_Fn fn)
 {
     if(module->functions.count + 1 > ELYSIA_MODULE_FUNCTIONS_CAPACITY) {
         return false;
@@ -38,20 +38,20 @@ bool push_fn_to_module(Compiled_Module *module, const Compiled_Fn fn)
     return true;
 }
 
-bool emplace_fn_to_module(Compiled_Module *module, const Func_Def def)
+bool emplace_fn_to_module(Evaluated_Module *module, const Func_Def def)
 {
     if(module->functions.count + 1 > ELYSIA_MODULE_FUNCTIONS_CAPACITY) {
         return false;
     }
 
-    module->functions.data[module->functions.count].def = def;;
+    module->functions.data[module->functions.count].def = def;
     module->functions.data[module->functions.count].scope.parent = &module->global;
     module->functions.data[module->functions.count].scope.vars.count = 0;
     module->functions.count += 1;
     return true;
 }
 
-Data_Type eval_expr(const Scope *scope, const Expr *expr)
+Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *expr)
 {
     Data_Type result;
     switch(expr->type) {
@@ -69,8 +69,8 @@ Data_Type eval_expr(const Scope *scope, const Expr *expr)
             } break;
         case EXPR_BINARY_OP:
             {
-                Data_Type leftdt = eval_expr(scope, &expr->as.binop->left);
-                Data_Type rightdt = eval_expr(scope, &expr->as.binop->right);
+                Data_Type leftdt = eval_expr(module, scope, &expr->as.binop->left);
+                Data_Type rightdt = eval_expr(module, scope, &expr->as.binop->right);
                 switch(expr->as.binop->type) {
                     case BINARY_OP_ADD:
                         {
@@ -92,7 +92,7 @@ Data_Type eval_expr(const Scope *scope, const Expr *expr)
         case EXPR_VAR_READ:
             {
                 String_View var_name = expr->as.var_read.name;
-                const Compiled_Var *var = get_var_from_scope(scope, var_name);
+                const Evaluated_Var *var = get_var_from_scope(scope, var_name);
                 if(var == NULL) {
                     compilation_error(expr->loc, "Failed to read into unknown variable\n");
                 }
@@ -107,8 +107,10 @@ Data_Type eval_expr(const Scope *scope, const Expr *expr)
     return result;
 }
 
-bool eval_module(Compiled_Module *result, const Module *module)
+bool eval_module(Evaluated_Module *result, const Module *module)
 {
-    emplace_fn_to_module(result, module->main);
+    for(size_t i = 0; i < module->functions.count; ++i) {
+        emplace_fn_to_module(result, module->functions.data[i]);
+    }
     return true;
 }

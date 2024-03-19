@@ -11,40 +11,43 @@ typedef struct {
     String_View name;
     size_t address;
     Data_Type type;
-} Compiled_Var;
+} Evaluated_Var;
 
 typedef struct Scope Scope;
 struct Scope {
     Scope *parent;
     struct {
-        Compiled_Var data[ELYSIA_SCOPE_VARS_CAPACITY];
+        Evaluated_Var data[ELYSIA_SCOPE_VARS_CAPACITY];
         uint32_t count;
     } vars;
     size_t stack_usage;
 };
 
-typedef struct Compiled_Fn {
+typedef struct Evaluated_Fn {
     Func_Def def;
     Scope scope;
-} Compiled_Fn;
+} Evaluated_Fn;
 
-typedef struct Compiled_Module {
+typedef struct Evaluated_Module {
     Scope global;
     struct {
-        Compiled_Fn data[ELYSIA_MODULE_FUNCTIONS_CAPACITY];
+        Evaluated_Fn data[ELYSIA_MODULE_FUNCTIONS_CAPACITY];
         uint32_t count;
     } functions;
-} Compiled_Module;
+} Evaluated_Module;
 
-const Compiled_Var *get_var_from_scope(const Scope *scope, String_View name);
+const Evaluated_Var *get_var_from_scope(const Scope *scope, String_View name);
 bool emplace_var_to_scope(Scope *scope, String_View name, Data_Type type, size_t address);
-bool push_var_to_scope(Scope *scope, const Compiled_Var var);
+bool push_var_to_scope(Scope *scope, const Evaluated_Var var);
 
-Data_Type eval_expr(const Scope *scope, const Expr *expr);
-bool eval_module(Compiled_Module *result, const Module *module);
-bool push_fn_to_module(Compiled_Module *module, const Compiled_Fn fn);
-bool emplace_fn_to_module(Compiled_Module *module, const Func_Def def);
+bool push_fn_to_module(Evaluated_Module *module, const Evaluated_Fn fn);
+bool emplace_fn_to_module(Evaluated_Module *module, const Func_Def def);
 
-void compile_module_to_file(const char *file_path, Compiled_Module *module);
+Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *expr);
+void eval_stmt(Evaluated_Module *module, Scope *scope, const Stmt stmt);
+void eval_func_def(Evaluated_Module *module, const Func_Def fdef);
+bool eval_module(Evaluated_Module *result, const Module *module);
+
+void compile_module_to_file(const char *file_path, Evaluated_Module *module);
 
 #endif // ELYSIA_COMPILER_H_

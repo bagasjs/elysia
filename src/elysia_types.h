@@ -64,7 +64,7 @@ struct Struct_Field_Info {
     String_View name;
 };
 
-void compilation_type_error(Location at, const Data_Type *expectation, const Data_Type *reality, const char *reason, ...);
+void compilation_type_error(Location at, const Data_Type *expectation, const Data_Type *reality, const char *additional, ...);
 
 Native_Type_Info get_native_type_info(Native_Type type);
 Native_Type_Info *find_native_type_info_by_name(String_View name);

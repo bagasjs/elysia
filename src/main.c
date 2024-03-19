@@ -67,8 +67,10 @@ int main(int argc, char **argv)
         }
 
         Module mod = parse_module(&arena, &lex);
-        dump_func_def(&mod.main, 0);
-        Compiled_Module *module = arena_alloc(&arena, sizeof(Compiled_Module));
+        for(size_t i = 0; i < mod.functions.count; ++i) {
+            dump_func_def(&mod.functions.data[i], 0);
+        }
+        Evaluated_Module *module = arena_alloc(&arena, sizeof(Evaluated_Module));
         if(eval_module(module, &mod)) {
             compile_module_to_file(output_path.data, module);
         } else {
