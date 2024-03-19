@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scope *scope, const Expr expr)
+static void compile_expr_into_x86_64_nasm(Evaluated_Module *module, FILE *f, Scope *scope, const Expr expr)
 {
     switch(expr.type) {
         case EXPR_INTEGER_LITERAL:
@@ -18,7 +18,7 @@ static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
             } break;
         case EXPR_VAR_READ:
             {
-                const Compiled_Var *var = get_var_from_scope(scope, expr.as.var_read.name);
+                const Evaluated_Var *var = get_var_from_scope(scope, expr.as.var_read.name);
                 fprintf(f, "    mov eax, DWORD[rbp-%zu]\n", var->address);
             } break;
         case EXPR_BINARY_OP:
@@ -46,7 +46,7 @@ static void compile_expr_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
     }
 }
 
-static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scope *scope, const Stmt stmt)
+static void compile_stmt_into_x86_64_nasm(Evaluated_Module *module, FILE *f, Scope *scope, const Stmt stmt)
 {
     switch(stmt.type) {
         case STMT_VAR_DEF:
@@ -78,7 +78,7 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
             } break;
         case STMT_VAR_ASSIGN:
             {
-                const Compiled_Var *var = get_var_from_scope(scope, stmt.as.var_assign.name);
+                const Evaluated_Var *var = get_var_from_scope(scope, stmt.as.var_assign.name);
                 Data_Type variable_type = eval_expr(scope, &stmt.as.var_assign.value);
                 if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
                     compilation_type_error(stmt.loc, &variable_type, &var->type, " while assigning value to variable "SV_FMT, 
@@ -98,7 +98,7 @@ static void compile_stmt_into_x86_64_nasm(Compiled_Module *module, FILE *f, Scop
     }
 }
 
-static void compile_func_def_into_x86_64_nasm(Compiled_Module *module, FILE *f, Compiled_Fn *fn)
+static void compile_func_def_into_x86_64_nasm(Evaluated_Module *module, FILE *f, Evaluated_Fn *fn)
 {
     fprintf(f, SV_FMT":\n", SV_ARGV(fn->def.name));
     fprintf(f, "    push rbp\n");
@@ -122,7 +122,7 @@ static void compile_func_def_into_x86_64_nasm(Compiled_Module *module, FILE *f, 
     fprintf(f, "    ret\n");
 }
 
-void compile_module_to_file(const char *file_path, Compiled_Module *module)
+void compile_module_to_file(const char *file_path, Evaluated_Module *module)
 {
     FILE *f = fopen(file_path, "w");
     if(!f) {

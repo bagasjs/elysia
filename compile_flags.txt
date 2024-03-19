@@ -1,1 +1,2 @@
 -Isrc
+-I./vendors/qbe/include/

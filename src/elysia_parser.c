@@ -16,7 +16,11 @@ Module parse_module(Arena *arena, Lexer *lex)
     Token token = {0};
     while(peek_token(lex, &token, 0)) {
         if(token.type == TOKEN_FUNCTION) {
-            module.main = parse_func_def(arena, lex);
+            Func_Def fdef = parse_func_def(arena, lex);
+            push_fdef_to_module(arena, &module, fdef);
+            if(sv_eq(fdef.name, SV("main"))) {
+                module.main = &module.functions.data[module.functions.count - 1];
+            }
         } else {
             compilation_error(token.loc, "Expecting function definition found `"SV_FMT"`\n", SV_ARGV(token.value));
             compilation_failure();

@@ -149,12 +149,18 @@ typedef struct {
 } Func_Def;
 
 typedef struct {
-    Func_Def main;
+    Func_Def *main;
+    struct {
+        Func_Def *data;
+        size_t count;
+        size_t capacity;
+    } functions;
 } Module;
 
 void push_param_to_param_list(Arena *arena, Func_Param_List *params, Func_Param param);
 void push_expr_to_expr_list(Arena *arena, Expr_List *list, Expr expr);
 void push_stmt_to_block(Arena *arena, Block *block, Stmt stmt);
+void push_fdef_to_module(Arena *arena, Module *module, Func_Def fdef);
 Binary_Op_Type binary_op_type_from_token_type(Token_Type type);
 
 void dump_func_def(const Func_Def *func_def, size_t depth);

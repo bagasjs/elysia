@@ -109,6 +109,21 @@ void push_stmt_to_block(Arena *arena, Block *block, Stmt stmt)
     block->data[block->count++] = stmt;
 }
 
+void push_fdef_to_module(Arena *arena, Module *module, Func_Def fdef)
+{
+    if(module->functions.count >= module->functions.capacity) {
+        size_t new_capacity = module->functions.capacity * 2;
+        if(new_capacity == 0) new_capacity = 32;
+        void *new_data = arena_alloc(arena, new_capacity * sizeof(*module->functions.data));
+        assert(new_data && "buy more ram lol!");
+        memcpy(new_data, module->functions.data, module->functions.count * sizeof(*module->functions.data));
+        module->functions.data = new_data;
+        module->functions.capacity = new_capacity;
+    }
+
+    module->functions.data[module->functions.count++] = fdef;
+}
+
 #define DUMP_PREFIX ' '
 #define DUMP(depth, ...) prefix_print(DUMP_PREFIX, depth, __VA_ARGS__)
 
