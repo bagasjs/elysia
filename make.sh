@@ -25,7 +25,7 @@ QBE_SOURCES=(
     "./vendors/qbe/src/copy.c"
     "./vendors/qbe/src/emit.c"
     "./vendors/qbe/src/fold.c"
-    "./vendors/qbe/src/libqbe.c"
+    "./vendors/qbe/src/main.c"
     "./vendors/qbe/src/live.c"
     "./vendors/qbe/src/load.c"
     "./vendors/qbe/src/mem.c"
@@ -106,8 +106,11 @@ if [ ! -d $BUILD_DIR/cache/qbe ]; then
     mkdir $BUILD_DIR/cache/qbe
 fi
 
-echo "--- Compiling Elysia With QBE Backend ---"
+echo "--- Compiling QBE ---"
+compile_sources "-std=c99 -g -Wall -Wextra -Wpedantic" "$BUILD_DIR/cache/qbe" "${QBE_SOURCES[@]}"
+link_executable "qbe" "$BUILD_DIR" "$LFLAGS" "${OBJECTS[@]}"
+OBJECTS=()
+echo "--- Compiling Elysia ---"
 compile_sources "$CFLAGS" "$BUILD_DIR/cache" "${ELYSIA_SOURCES_BACKEND_QBE[@]}"
-# compile_sources "-std=c99 -g -Wall -Wextra -Wpedantic" "$BUILD_DIR/cache/qbe" "${QBE_SOURCES[@]}"
-link_executable "${TARGET}-qbe" "$BUILD_DIR" "$LFLAGS" "${OBJECTS[@]}"
+link_executable "${TARGET}" "$BUILD_DIR" "$LFLAGS" "${OBJECTS[@]}"
 

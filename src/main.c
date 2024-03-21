@@ -40,7 +40,7 @@ int main(int argc, char **argv)
     Lexer lex;
     lex.i = 0;
     if(sv_eq(subcommand, SV("com"))) {
-        String_View output_path = SV("output.asm");
+        String_View output_path = SV("output.ir");
         String_View source_path = {0};
         while(argc > 0) {
             String_View item = shift(&argc, &argv, "Unreachable");

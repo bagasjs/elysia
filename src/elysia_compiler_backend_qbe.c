@@ -55,45 +55,21 @@ static void compile_stmt_into_qbe(Evaluated_Module *module, FILE *f, Scope *scop
     switch(stmt.type) {
         case STMT_VAR_DEF:
             {
-                Data_Type data_type = stmt.as.var_def.type;
-                emplace_var_to_scope(scope, stmt.as.var_def.name, data_type, scope->stack_usage);
-                scope->stack_usage += get_data_type_size(&data_type);
             } break;
         case STMT_VAR_INIT:
             {
-                size_t addr = scope->stack_usage;
-                Data_Type variable_type = eval_expr(module, scope, &stmt.as.var_init.value);
-                if(!stmt.as.var_init.infer_type) {
-                    if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
-                        compilation_type_error(stmt.loc, &variable_type, &stmt.as.var_init.type, 
-                                " while assigning value to variable "SV_FMT, SV_ARGV(stmt.as.var_init.name));
-                    }
-                }
-                size_t variable_size = 0;
-                variable_size = get_data_type_size(&variable_type);
-                scope->stack_usage += variable_size;
-                // printf("Variable "SV_FMT" with %s type "SV_FMT" with size %zu\n", 
-                //         SV_ARGV(stmt.as.var_init.name), variable_type.is_native ? "native" : "non-native", 
-                //         SV_ARGV(variable_type.name), variable_size);
-                emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type, addr);
-
                 compile_expr_into_qbe(module, f, scope, stmt.as.var_init.value);
                 fprintf(f, "    %%"SV_FMT" =w copy %%_1 # %s:%d\n", SV_ARGV(stmt.as.var_init.name), __FILE__, __LINE__);
             } break;
         case STMT_VAR_ASSIGN:
             {
-                const Evaluated_Var *var = get_var_from_scope(scope, stmt.as.var_assign.name);
-                Data_Type variable_type = eval_expr(module, scope, &stmt.as.var_assign.value);
-                if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
-                    compilation_type_error(stmt.loc, &variable_type, &var->type, " while assigning value to variable "SV_FMT, 
-                            SV_ARGV(stmt.as.var_assign.name));
-                }
                 compile_expr_into_qbe(module, f, scope, stmt.as.var_assign.value);
                 fprintf(f, "    %%"SV_FMT" =w copy %%_1 # %s:%d\n", SV_ARGV(stmt.as.var_init.name), __FILE__, __LINE__);
             } break;
         case STMT_RETURN:
             {
-                // Nothing will be handled by compile_func_def_into_qbe
+                compile_expr_into_qbe(module, f, scope, stmt.as._return.value);
+                fprintf(f, "    ret %%_1\n}\n");
             } break;
         default:
             {
@@ -106,32 +82,10 @@ static void compile_func_def_into_qbe(Evaluated_Module *module, FILE *f, Evaluat
 {
     fprintf(f, "export function w $"SV_FMT"() {\n", SV_ARGV(fn->def.name));
     fprintf(f, "@start\n");
-    bool has_return = false;
-    for(size_t i = 0; i < fn->def.body.count; ++i) {
-        Stmt stmt = fn->def.body.data[i];
-        compile_stmt_into_qbe(module, f, &fn->scope, stmt);
-        if(stmt.type == STMT_RETURN) {
-            Data_Type return_type = eval_expr(module, &fn->scope, &stmt.as._return.value);
-            Data_Type_Cmp_Result comparison = compare_data_type(&return_type, &fn->def.return_type);
-            if(comparison != DATA_TYPE_CMP_EQUAL) {
-                compilation_type_error(stmt.loc, &fn->def.return_type, &return_type, 
-                        "for the return value of function `"SV_FMT"`", SV_ARGV(fn->def.name));
-            }
-            compile_expr_into_qbe(module, f, &fn->scope, stmt.as._return.value);
-            has_return = true;
-            break;
-        }
-    }
-    if(!has_return) {
-        if(!(fn->def.return_type.is_native && fn->def.return_type.as.native == NATIVE_TYPE_VOID)) {
-            compilation_error(fn->def.loc, 
-                    "Function `"SV_FMT"` doesn't have any return statement but it's not a void function",
-                    SV_ARGV(fn->def.name));
-        }
+    for(size_t i = 0; i < fn->def.body.count; ++i) 
+        compile_stmt_into_qbe(module, f, &fn->scope, fn->def.body.data[i]);
+    if(!fn->has_return_stmt) 
         fprintf(f, "   ret\n}\n");
-    } else {
-        fprintf(f, "    ret %%_1\n}\n");
-    }
 }
 
 void compile_module_to_file(const char *file_path, Evaluated_Module *module)

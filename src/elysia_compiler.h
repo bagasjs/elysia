@@ -26,6 +26,7 @@ struct Scope {
 typedef struct Evaluated_Fn {
     Func_Def def;
     Scope scope;
+    bool has_return_stmt;
 } Evaluated_Fn;
 
 typedef struct Evaluated_Module {
@@ -44,7 +45,7 @@ bool push_fn_to_module(Evaluated_Module *module, const Evaluated_Fn fn);
 bool emplace_fn_to_module(Evaluated_Module *module, const Func_Def def);
 
 Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *expr);
-void eval_stmt(Evaluated_Module *module, Scope *scope, const Stmt stmt);
+void eval_stmt(Evaluated_Module *module, Evaluated_Fn *fn, Scope *scope, const Stmt stmt);
 void eval_func_def(Evaluated_Module *module, const Func_Def fdef);
 bool eval_module(Evaluated_Module *result, const Module *module);
 

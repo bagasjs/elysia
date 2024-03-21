@@ -1,9 +1,8 @@
-fn main() {
+fn main() : i32 {
     var it: usize = 0;
     var MAX_IT: usize = 100;
-    var test = 200;
     while it < MAX_IT {
         it = it + 1;
     }
-    return 0;
+    return it;
 }

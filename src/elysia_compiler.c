@@ -51,6 +51,79 @@ bool emplace_fn_to_module(Evaluated_Module *module, const Func_Def def)
     return true;
 }
 
+void eval_stmt(Evaluated_Module *module, Evaluated_Fn *fn, Scope *scope, const Stmt stmt)
+{
+    switch(stmt.type) {
+        case STMT_VAR_DEF:
+            {
+                Data_Type data_type = stmt.as.var_def.type;
+                emplace_var_to_scope(scope, stmt.as.var_def.name, data_type, scope->stack_usage);
+                scope->stack_usage += get_data_type_size(&data_type);
+            } break;
+        case STMT_VAR_INIT:
+            {
+                size_t addr = scope->stack_usage;
+                Data_Type variable_type = eval_expr(module, scope, &stmt.as.var_init.value);
+                if(!stmt.as.var_init.infer_type) {
+                    if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
+                        compilation_type_error(stmt.loc, &variable_type, &stmt.as.var_init.type, 
+                                " while assigning value to variable "SV_FMT, SV_ARGV(stmt.as.var_init.name));
+                    }
+                }
+                size_t variable_size = 0;
+                variable_size = get_data_type_size(&variable_type);
+                scope->stack_usage += variable_size;
+                // printf("Variable "SV_FMT" with %s type "SV_FMT" with size %zu\n", 
+                //         SV_ARGV(stmt.as.var_init.name), variable_type.is_native ? "native" : "non-native", 
+                //         SV_ARGV(variable_type.name), variable_size);
+                emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type, addr);
+            } break;
+        case STMT_VAR_ASSIGN:
+            {
+                const Evaluated_Var *var = get_var_from_scope(scope, stmt.as.var_assign.name);
+                Data_Type variable_type = eval_expr(module, scope, &stmt.as.var_assign.value);
+                if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
+                    compilation_type_error(stmt.loc, &variable_type, &var->type, " while assigning value to variable "SV_FMT, 
+                            SV_ARGV(stmt.as.var_assign.name));
+                }
+            } break;
+        case STMT_RETURN:
+            {
+
+                Data_Type return_type = eval_expr(module, &fn->scope, &stmt.as._return.value);
+                Data_Type_Cmp_Result comparison = compare_data_type(&return_type, &fn->def.return_type);
+                if(comparison != DATA_TYPE_CMP_EQUAL) {
+                    compilation_type_error(stmt.loc, &fn->def.return_type, &return_type, 
+                            "for the return value of function `"SV_FMT"`", SV_ARGV(fn->def.name));
+                }
+                fn->has_return_stmt = true;
+            } break;
+        default:
+            {
+                fatal("Unreachable");
+            } break;
+    }
+}
+
+void eval_func_def(Evaluated_Module *module, const Func_Def fdef)
+{
+    Evaluated_Fn result;
+    result.has_return_stmt = false;
+    result.def = fdef;
+    result.scope.vars.count = 0;
+    result.scope.stack_usage = 0;
+    result.scope.parent = &module->global;
+    for(size_t i = 0; i < fdef.body.count; ++i) 
+        eval_stmt(module, &result, &result.scope, fdef.body.data[i]);
+    if(!result.has_return_stmt) {
+        if(!(fdef.return_type.is_native && fdef.return_type.as.native == NATIVE_TYPE_VOID)) {
+            compilation_error(fdef.loc, "Function `"SV_FMT"` doesn't have any return statement but it's not a void function",
+                    SV_ARGV(fdef.name));
+        }
+    }
+    push_fn_to_module(module, result);
+}
+
 Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *expr)
 {
     Data_Type result;
@@ -109,8 +182,7 @@ Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *ex
 
 bool eval_module(Evaluated_Module *result, const Module *module)
 {
-    for(size_t i = 0; i < module->functions.count; ++i) {
-        emplace_fn_to_module(result, module->functions.data[i]);
-    }
+    for(size_t i = 0; i < module->functions.count; ++i) 
+        eval_func_def(result, module->functions.data[i]);
     return true;
 }
