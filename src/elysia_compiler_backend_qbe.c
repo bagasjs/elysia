@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void compile_expr_into_qbe(Evaluated_Module *module, FILE *f, Scope *scope, const Expr expr)
+static void compile_expr_into_qbe(FILE *f, Evaluated_Module *module, Scope *scope, const Expr expr)
 {
     switch(expr.type) {
         case EXPR_INTEGER_LITERAL:
@@ -14,7 +14,7 @@ static void compile_expr_into_qbe(Evaluated_Module *module, FILE *f, Scope *scop
             } break;
         case EXPR_FUNCALL:
             {
-                fprintf(f, "    call "SV_FMT"\n", SV_ARGV(expr.as.func_call.name));
+                fprintf(f, "    call "SV_FMT"()\n", SV_ARGV(expr.as.func_call.name));
             } break;
         case EXPR_VAR_READ:
             {
@@ -23,9 +23,9 @@ static void compile_expr_into_qbe(Evaluated_Module *module, FILE *f, Scope *scop
             } break;
         case EXPR_BINARY_OP:
             {
-                compile_expr_into_qbe(module, f, scope, expr.as.binop->right);
+                compile_expr_into_qbe(f, module, scope, expr.as.binop->right);
                 fprintf(f, "    %%_2 =w copy %%_1 # %s:%d\n", __FILE__, __LINE__);
-                compile_expr_into_qbe(module, f, scope, expr.as.binop->left);
+                compile_expr_into_qbe(f, module, scope, expr.as.binop->left);
                 switch(expr.as.binop->type) {
                     case BINARY_OP_ADD:
                         {
@@ -34,6 +34,10 @@ static void compile_expr_into_qbe(Evaluated_Module *module, FILE *f, Scope *scop
                     case BINARY_OP_SUB:
                         {
                             fprintf(f, "    %%_1 =w sub %%_1, %%_2 # %s:%d\n", __FILE__, __LINE__);
+                        } break;
+                    case BINARY_OP_MUL:
+                        {
+                            fprintf(f, "    %%_1 =w mul %%_1, %%_2 # %s:%d\n", __FILE__, __LINE__);
                         } break;
                     default:
                         {
@@ -50,7 +54,7 @@ static void compile_expr_into_qbe(Evaluated_Module *module, FILE *f, Scope *scop
     }
 }
 
-static void compile_stmt_into_qbe(Evaluated_Module *module, FILE *f, Scope *scope, const Stmt stmt)
+static void compile_stmt_into_qbe(FILE *f, Evaluated_Module *module, Evaluated_Fn *fn, Scope *scope, const Stmt stmt)
 {
     switch(stmt.type) {
         case STMT_VAR_DEF:
@@ -58,18 +62,27 @@ static void compile_stmt_into_qbe(Evaluated_Module *module, FILE *f, Scope *scop
             } break;
         case STMT_VAR_INIT:
             {
-                compile_expr_into_qbe(module, f, scope, stmt.as.var_init.value);
+                compile_expr_into_qbe(f, module, scope, stmt.as.var_init.value);
                 fprintf(f, "    %%"SV_FMT" =w copy %%_1 # %s:%d\n", SV_ARGV(stmt.as.var_init.name), __FILE__, __LINE__);
             } break;
         case STMT_VAR_ASSIGN:
             {
-                compile_expr_into_qbe(module, f, scope, stmt.as.var_assign.value);
+                compile_expr_into_qbe(f, module, scope, stmt.as.var_assign.value);
                 fprintf(f, "    %%"SV_FMT" =w copy %%_1 # %s:%d\n", SV_ARGV(stmt.as.var_init.name), __FILE__, __LINE__);
             } break;
         case STMT_RETURN:
             {
-                compile_expr_into_qbe(module, f, scope, stmt.as._return.value);
+                compile_expr_into_qbe(f, module, scope, stmt.as._return.value);
                 fprintf(f, "    ret %%_1\n}\n");
+            } break;
+        case STMT_WHILE:
+            {
+                fprintf(f, "@L1b");
+                compile_expr_into_qbe(f, module, scope, stmt.as._while.condition);
+                fprintf(f, "jz %%_1, @L1b, @L1e");
+                for(size_t i = 0; i < stmt.as._while.todo.count; ++i) 
+                    compile_stmt_into_qbe(f, module, fn, &fn->scope, stmt.as._while.todo.data[i]);
+                fprintf(f, "@L1e");
             } break;
         default:
             {
@@ -83,7 +96,7 @@ static void compile_func_def_into_qbe(Evaluated_Module *module, FILE *f, Evaluat
     fprintf(f, "export function w $"SV_FMT"() {\n", SV_ARGV(fn->def.name));
     fprintf(f, "@start\n");
     for(size_t i = 0; i < fn->def.body.count; ++i) 
-        compile_stmt_into_qbe(module, f, &fn->scope, fn->def.body.data[i]);
+        compile_stmt_into_qbe(f, module, fn, &fn->scope, fn->def.body.data[i]);
     if(!fn->has_return_stmt) 
         fprintf(f, "   ret\n}\n");
 }

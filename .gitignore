@@ -2,3 +2,4 @@ build
 output.asm
 output
 runtime/*.o
+output.ir

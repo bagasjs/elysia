@@ -175,7 +175,32 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
                 expect_token(lex, TOKEN_IF);
                 result.loc = token.loc;
                 result.type = STMT_IF;
-                assert(0 && "Not implemented");
+                result.as._if.loc = token.loc;
+                result.as._if.condition = parse_expr(arena, lex);
+                result.as._if.todo = parse_block(arena, lex);
+
+                Stmt_If *prev = &result.as._if;
+                while(peek_token(lex, &token, 0) && token.type == TOKEN_ELSE) {
+                    expect_token(lex, TOKEN_ELSE);
+                    if(peek_token(lex, &token, 1) && token.type == TOKEN_IF) {
+                        expect_token(lex, TOKEN_IF);
+                        // TODO (bagasjs): Maybe other methods other than linked list?
+                        Stmt_If *elif = arena_alloc(arena, sizeof(Stmt_If));
+                        elif->loc = token.loc;
+                        elif->condition = parse_expr(arena, lex);
+                        elif->todo = parse_block(arena, lex);
+                        prev->elif = elif;
+                        prev = elif;
+                    } else {
+                        result.as._if._else = parse_block(arena, lex);
+                        break;
+                    }
+                }
+            } break;
+        case TOKEN_ELSE:
+            {
+                compilation_error(token.loc, "`else` in here is invalid");
+                compilation_failure();
             } break;
         case TOKEN_WHILE:
             {

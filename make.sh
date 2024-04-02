@@ -61,7 +61,6 @@ ELYSIA_SOURCES_BACKEND_QBE=(
     "./src/elysia_lexer.c"
     "./src/elysia_compiler.c"
     "./src/elysia_compiler_backend_qbe.c"
-    "./src/plenary.c"
     "./src/main.c"
 )
 

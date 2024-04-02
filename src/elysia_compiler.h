@@ -7,6 +7,15 @@
 #define ELYSIA_SCOPE_VARS_CAPACITY 1024
 #define ELYSIA_MODULE_FUNCTIONS_CAPACITY 1024
 
+typedef struct Jump_Target Jump_Target;
+struct Jump_Target {
+    int kind;
+    Jump_Target *begin;
+    Jump_Target *next;
+    Jump_Target *prev;
+    Jump_Target *end;
+};
+
 typedef struct {
     String_View name;
     size_t address;
@@ -27,6 +36,11 @@ typedef struct Evaluated_Fn {
     Func_Def def;
     Scope scope;
     bool has_return_stmt;
+    struct {
+        Jump_Target *items;
+        size_t count;
+        size_t capacity;
+    } targets;
 } Evaluated_Fn;
 
 typedef struct Evaluated_Module {

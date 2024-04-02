@@ -4,8 +4,17 @@ type Entity struct {
     male: bool,
 }
 
-fn main(argc: i32, argv: *char[]): i32 {
+// Pub will result the function into non-static function if it's building static library and executable
+// As dynamic library it will set the function as visible otherwise it will be a static function
+pub fn incr(i: *usize, max: usize): bool {
+    var result = *i < max;
+    *i = *i + 1;
+    return result;
+}
+
+pub fn main(argc: i32, argv: *char[]): i32 {
     var entt = Entity{ name="Who Am I?", age=12, male = true };
+    var entt: Entity = Entity{ name = "Who Am I?", age = 12, male = true };
 
     if entt.male {
         printf!("You're a male");
@@ -14,9 +23,8 @@ fn main(argc: i32, argv: *char[]): i32 {
     }
 
     var i = 0;
-    while i < entt.age {
+    while incr(&i, 300) {
         printf!("Happy birthday %d years %s", i, entt.name);
-        i = i + 1
     }
 
     return 0

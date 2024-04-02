@@ -67,7 +67,7 @@ void eval_stmt(Evaluated_Module *module, Evaluated_Fn *fn, Scope *scope, const S
                 if(!stmt.as.var_init.infer_type) {
                     if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
                         compilation_type_error(stmt.loc, &variable_type, &stmt.as.var_init.type, 
-                                " while assigning value to variable "SV_FMT, SV_ARGV(stmt.as.var_init.name));
+                                "while assigning value to variable `"SV_FMT"`", SV_ARGV(stmt.as.var_init.name));
                     }
                 }
                 size_t variable_size = 0;
@@ -86,6 +86,10 @@ void eval_stmt(Evaluated_Module *module, Evaluated_Fn *fn, Scope *scope, const S
                     compilation_type_error(stmt.loc, &variable_type, &var->type, " while assigning value to variable "SV_FMT, 
                             SV_ARGV(stmt.as.var_assign.name));
                 }
+            } break;
+        case STMT_WHILE:
+            {
+
             } break;
         case STMT_RETURN:
             {
@@ -143,7 +147,7 @@ Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *ex
         case EXPR_BINARY_OP:
             {
                 Data_Type leftdt = eval_expr(module, scope, &expr->as.binop->left);
-                Data_Type rightdt = eval_expr(module, scope, &expr->as.binop->right);
+                // Data_Type rightdt = eval_expr(module, scope, &expr->as.binop->right);
                 switch(expr->as.binop->type) {
                     case BINARY_OP_ADD:
                         {
