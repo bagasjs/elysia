@@ -130,7 +130,7 @@ void eval_func_def(Evaluated_Module *module, const Func_Def fdef)
 
 Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *expr)
 {
-    Data_Type result;
+    Data_Type result = {0};
     switch(expr->type) {
         case EXPR_INTEGER_LITERAL:
             {

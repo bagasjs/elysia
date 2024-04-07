@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define FIRST_IMPLEMENTATION
 #include "src/first.h"
 
@@ -67,14 +68,16 @@ int main(int argc, char **argv)
     shell_exec_cmd(cmd);
     da_reset(&cmd);
 
-    cmd_append(&cmd, CC);
-    cmd_append(&cmd, "-Wall", "-Wextra", "-I./vendors/qbe/include/", "-std=c99");
-    cmd_append(&cmd, "-o", BUILD_DIR"/qbe");
-
-    for(size_t i = 0; i < ARRAY_LENGTH(qbe_sources); ++i) {
-        da_append(&cmd, qbe_sources[i]);
+    if(!fs_is_exists(BUILD_DIR"/qbe")) {
+        cmd_append(&cmd, CC);
+        cmd_append(&cmd, "-Wall", "-Wextra", "-I./vendors/qbe/include/", "-std=c99");
+        cmd_append(&cmd, "-o", BUILD_DIR"/qbe");
+        for(size_t i = 0; i < ARRAY_LENGTH(qbe_sources); ++i) {
+            da_append(&cmd, qbe_sources[i]);
+        }
+        shell_exec_cmd(cmd);
     }
-    shell_exec_cmd(cmd);
+
 
     da_free(&cmd);
 }

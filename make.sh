@@ -103,11 +103,11 @@ fi
 
 if [ ! -d $BUILD_DIR/cache/qbe ]; then
     mkdir $BUILD_DIR/cache/qbe
+    echo "--- Compiling QBE ---"
+    compile_sources "-std=c99 -g -Wall -Wextra -Wpedantic" "$BUILD_DIR/cache/qbe" "${QBE_SOURCES[@]}"
+    link_executable "qbe" "$BUILD_DIR" "$LFLAGS" "${OBJECTS[@]}"
 fi
 
-echo "--- Compiling QBE ---"
-compile_sources "-std=c99 -g -Wall -Wextra -Wpedantic" "$BUILD_DIR/cache/qbe" "${QBE_SOURCES[@]}"
-link_executable "qbe" "$BUILD_DIR" "$LFLAGS" "${OBJECTS[@]}"
 OBJECTS=()
 echo "--- Compiling Elysia ---"
 compile_sources "$CFLAGS" "$BUILD_DIR/cache" "${ELYSIA_SOURCES_BACKEND_QBE[@]}"

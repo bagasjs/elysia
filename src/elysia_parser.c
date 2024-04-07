@@ -3,6 +3,7 @@
 #include "elysia_ast.h"
 #include "elysia_lexer.h"
 #include "elysia_types.h"
+#include <stdio.h>
 
 #include <assert.h>
 
@@ -182,7 +183,7 @@ Stmt parse_stmt(Arena *arena, Lexer *lex)
                 Stmt_If *prev = &result.as._if;
                 while(peek_token(lex, &token, 0) && token.type == TOKEN_ELSE) {
                     expect_token(lex, TOKEN_ELSE);
-                    if(peek_token(lex, &token, 1) && token.type == TOKEN_IF) {
+                    if(peek_token(lex, &token, 0) && token.type == TOKEN_IF) {
                         expect_token(lex, TOKEN_IF);
                         // TODO (bagasjs): Maybe other methods other than linked list?
                         Stmt_If *elif = arena_alloc(arena, sizeof(Stmt_If));
