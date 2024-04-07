@@ -2,3 +2,6 @@ build
 output.asm
 output
 runtime/*.o
+output.ir
+first
+first.old

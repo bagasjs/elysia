@@ -1,14 +1,17 @@
 fn main(): i32 {
+    var retval: i32;
     var score = 0;
     if 0 <= score && score < 40 {
-        return 68; // ascii code for D
+        retval = 68; # ascii code for D
     } else if 40 <= score && score < 60 {
-        return 67; // ascii code for C
+        retval = 67; # ascii code for C
     } else if 60 <= score && score < 80 {
-        return 66; // ascii code for B
+        retval = 66; # ascii code for B
     } else if 80 <= score && score <= 100 {
-        return 65; // ascii code for A
+        retval = 65; # ascii code for A
     } else {
-        return 0;
+        retval = 0;
     }
+
+    return retval;
 }

@@ -15,6 +15,7 @@ void usage(FILE *f)
     fprintf(f, "Available subcommands: \n");
     fprintf(f, "    com <file> <output?> [KWARGS]   Compile program\n");
     fprintf(f, "    tokenize <file>                 Tokenization step\n");
+    fprintf(f, "    ast-dump <file>                 Dump the AST Node Tree\n");
     fprintf(f, "    version                         Get the current compiler version\n");
     fprintf(f, "    help                            Get this message\n");
 }
@@ -40,7 +41,7 @@ int main(int argc, char **argv)
     Lexer lex;
     lex.i = 0;
     if(sv_eq(subcommand, SV("com"))) {
-        String_View output_path = SV("output.asm");
+        String_View output_path = SV("output.ir");
         String_View source_path = {0};
         while(argc > 0) {
             String_View item = shift(&argc, &argv, "Unreachable");
@@ -76,6 +77,23 @@ int main(int argc, char **argv)
         } else {
             fprintf(stderr, "Failed to evaluate the program\n");
             compilation_failure();
+        }
+    } else if(sv_eq(subcommand, SV("ast-dump"))) {
+        String_View source_path = shift(&argc, &argv, "Please provide the source file path");
+
+        const char *source_data = arena_load_file_data(&arena, source_path.data);
+        if(!source_data) {
+            fatal("Failed to load source file data");
+        }
+
+        String_View source = sv_from_parts(source_data, strlen(source_data));
+        if(!init_lexer(&lex, source_path, source)) {
+            fatal("Failed to initialize the lexer");
+        }
+
+        Module mod = parse_module(&arena, &lex);
+        for(size_t i = 0; i < mod.functions.count; ++i) {
+            dump_func_def(&mod.functions.data[i], 0);
         }
     } else if(sv_eq(subcommand, SV("tokenize"))) {
         String_View source_path = shift(&argc, &argv, "Please provide the source file path");

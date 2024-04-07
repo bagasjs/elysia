@@ -37,8 +37,10 @@ static Token_Info _token_info[] = {
     [TOKEN_GE] = { .type = TOKEN_GE, .name = "ge", .hardcode = ">=", .is_binary_op_token = true },
     [TOKEN_LT] = { .type = TOKEN_LT, .name = "lt", .hardcode = "<", .is_binary_op_token = true },
     [TOKEN_LE] = { .type = TOKEN_LE, .name = "le", .hardcode = "<=", .is_binary_op_token = true },
-    [TOKEN_AND] = { .type = TOKEN_AND, .name = "and", .hardcode = "&", .is_binary_op_token = true },
-    [TOKEN_OR] = { .type = TOKEN_OR, .name = "or", .hardcode = "|", .is_binary_op_token = true },
+    [TOKEN_AND] = { .type = TOKEN_AND, .name = "and", .hardcode = "&&", .is_binary_op_token = true },
+    [TOKEN_OR] = { .type = TOKEN_OR, .name = "or", .hardcode = "||", .is_binary_op_token = true },
+    [TOKEN_BAND] = { .type = TOKEN_BAND, .name = "band", .hardcode = "&", .is_binary_op_token = true },
+    [TOKEN_BOR] = { .type = TOKEN_BOR, .name = "bor", .hardcode = "|", .is_binary_op_token = true },
     [TOKEN_XOR] = { .type = TOKEN_XOR, .name = "xor", .hardcode = "^", .is_binary_op_token = true },
     [TOKEN_SHL] = { .type = TOKEN_SHL, .name = "shl", .hardcode = "<<", .is_binary_op_token = true },
     [TOKEN_SHR] = { .type = TOKEN_SHR, .name = "shr", .hardcode = ">>", .is_binary_op_token = true },
@@ -155,6 +157,13 @@ bool cache_next_token(Lexer *lex)
         advance_lexer(lex);
     }
 
+    if(lex->cc == '#') {
+        while(lex->cc != '\n') 
+            advance_lexer(lex);
+        return cache_next_token(lex);
+    }
+
+
     switch(lex->cc) {
         case '.':
             cache_token(lex, TOKEN_DOT, sv_slice(lex->source, lex->i, lex->i + 1));
@@ -216,18 +225,33 @@ bool cache_next_token(Lexer *lex)
             cache_token(lex, TOKEN_MOD, sv_slice(lex->source, lex->i, lex->i + 1));
             advance_lexer(lex);
             break;
-        case '&':
-            cache_token(lex, TOKEN_AND, sv_slice(lex->source, lex->i, lex->i + 1));
-            advance_lexer(lex);
-            break;
-        case '|':
-            cache_token(lex, TOKEN_OR, sv_slice(lex->source, lex->i, lex->i + 1));
-            advance_lexer(lex);
-            break;
         case '^':
             cache_token(lex, TOKEN_XOR, sv_slice(lex->source, lex->i, lex->i + 1));
             advance_lexer(lex);
             break;
+        case '|':
+            {
+                size_t start = lex->i;
+                advance_lexer(lex);
+                if(lex->cc == '|') {
+                    cache_token(lex, TOKEN_OR, sv_slice(lex->source, start, start + 2));
+                    advance_lexer(lex);
+                } else {
+                    cache_token(lex, TOKEN_BOR, sv_slice(lex->source, start, start + 1));
+                }
+            }
+            break;
+        case '&':
+            {
+                size_t start = lex->i;
+                advance_lexer(lex);
+                if(lex->cc == '&') {
+                    cache_token(lex, TOKEN_AND, sv_slice(lex->source, start, start + 2));
+                    advance_lexer(lex);
+                } else {
+                    cache_token(lex, TOKEN_BAND, sv_slice(lex->source, start, start + 1));
+                }
+            } break;
         case '=':
             {
                 size_t start = lex->i;

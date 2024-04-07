@@ -18,13 +18,6 @@ static const Stmt_Info stmt_infos[COUNT_STMTS] = {
     [STMT_WHILE] = { .name = "While Block", .type = STMT_WHILE },
 };
 
-// typedef enum {
-//     BINARY_OP_UNKNOWN = 0,
-//     BINARY_OP_ADD, BINARY_OP_SUB, BINARY_OP_DIV, BINARY_OP_MUL, BINARY_OP_MOD, BINARY_OP_EQ,
-//     BINARY_OP_NE, BINARY_OP_LT, BINARY_OP_LE, BINARY_OP_GT, BINARY_OP_GE, BINARY_OP_AND,
-//     BINARY_OP_OR, BINARY_OP_XOR, BINARY_OP_SHL, BINARY_OP_SHR,
-// } Binary_Op_Type;
-
 typedef struct Expr_Info {
     const char *name;
     Expr_Type type;

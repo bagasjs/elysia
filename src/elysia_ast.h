@@ -81,6 +81,8 @@ typedef struct Stmt_Var_Def Stmt_Var_Def;
 typedef struct Stmt_Var_Init Stmt_Var_Init;
 typedef struct Stmt_Var_Assign Stmt_Var_Assign;
 typedef struct Stmt_While Stmt_While;
+typedef struct Stmt_If Stmt_If;
+
 typedef union Stmt_As Stmt_As;
 typedef struct {
     Stmt *data;
@@ -114,12 +116,22 @@ struct Stmt_While {
     Block todo;
 };
 
+// TODO (bagasjs): Maybe other methods other than linked list?
+struct Stmt_If {
+    Location loc;
+    Expr condition;
+    Block todo;
+    Stmt_If *elif;
+    Block _else;
+};
+
 union Stmt_As {
     Stmt_Return _return;
     Stmt_Var_Def var_def;
     Stmt_Var_Assign var_assign;
     Stmt_Var_Init var_init;
     Stmt_While _while;
+    Stmt_If _if;
     Expr expr;
 };
 
