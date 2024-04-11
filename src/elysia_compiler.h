@@ -2,7 +2,8 @@
 #define ELYSIA_COMPILER_H_
 
 #include "elysia.h"
-#include "elysia_ast.h"
+#include "elysia_types.h"
+#include "elysia_parser.h"
 
 #define ELYSIA_SCOPE_VARS_CAPACITY 1024
 #define ELYSIA_MODULE_FUNCTIONS_CAPACITY 1024

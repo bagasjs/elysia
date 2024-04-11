@@ -6,10 +6,10 @@
 #define BUILD_DIR "build"
 const char *elysia_sources[] = {
     "./src/elysia.c",
-    "./src/elysia_ast.c",
+    "./src/elysia_lexer.c",
+    "./src/elysia_parser_astdump.c",
     "./src/elysia_parser.c",
     "./src/elysia_types.c",
-    "./src/elysia_lexer.c",
     "./src/elysia_compiler.c",
     "./src/elysia_compiler_backend_qbe.c",
     "./src/main.c",

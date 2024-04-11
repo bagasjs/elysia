@@ -5,6 +5,9 @@
 #include "elysia.h"
 #include <stdio.h>
 
+#define DATA_TYPE_FMT "%s"SV_FMT"%s"
+#define DATA_TYPE_ARGV(dt) ((dt)->is_ptr ? "*" : ""), SV_ARGV((dt)->name), ((dt)->is_array ? "[]" : "")
+
 typedef enum {
     NATIVE_TYPE_VOID = 0,
     NATIVE_TYPE_U8,

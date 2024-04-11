@@ -1,6 +1,7 @@
 fn main(): i32 {
     var retval: i32;
     var score = 0;
+
     if 0 <= score && score < 40 {
         retval = 68; # ascii code for D
     } else if 40 <= score && score < 60 {

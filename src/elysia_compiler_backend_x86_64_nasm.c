@@ -1,5 +1,4 @@
 #include "elysia.h"
-#include "elysia_ast.h"
 #include "elysia_compiler.h"
 #include "elysia_types.h"
 #include <stdio.h>

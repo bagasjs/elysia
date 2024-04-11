@@ -1,7 +1,4 @@
-#include "elysia.h"
-#include "elysia_ast.h"
-#include "sv.h"
-#include <string.h>
+#include "elysia_parser.h"
 
 typedef struct Stmt_Info {
     const char *name;
@@ -33,94 +30,8 @@ static const Expr_Info expr_infos[COUNT_EXPRS] = {
     [EXPR_BINARY_OP] = { .name = "Binary Operation", .type = EXPR_BINARY_OP, },
 };
 
-Binary_Op_Type binary_op_type_from_token_type(Token_Type type)
-{
-    switch(type)
-    {
-        case TOKEN_ADD:  return BINARY_OP_ADD;
-        case TOKEN_SUB:  return BINARY_OP_SUB;
-        case TOKEN_ASTERISK:  return BINARY_OP_MUL;
-        case TOKEN_DIV:  return BINARY_OP_DIV;
-        case TOKEN_MOD:  return BINARY_OP_MOD;
-        case TOKEN_EQ:   return BINARY_OP_EQ;
-        case TOKEN_NE:   return BINARY_OP_NE;
-        case TOKEN_GT:   return BINARY_OP_GT;
-        case TOKEN_GE:   return BINARY_OP_GE;
-        case TOKEN_LT:   return BINARY_OP_LT;
-        case TOKEN_LE:   return BINARY_OP_LE;
-        case TOKEN_AND:  return BINARY_OP_AND;
-        case TOKEN_OR:   return BINARY_OP_OR;
-        case TOKEN_XOR:  return BINARY_OP_XOR;
-        case TOKEN_SHL:  return BINARY_OP_SHL;
-        case TOKEN_SHR:  return BINARY_OP_SHR;
-        default: return BINARY_OP_UNKNOWN;
-    }
-}
-
-void push_param_to_param_list(Arena *arena, Func_Param_List *params, Func_Param param)
-{
-    if(params->count >= params->capacity) {
-        size_t new_capacity = params->capacity * 2;
-        if(new_capacity == 0) new_capacity = 32;
-        void *new_data = arena_alloc(arena, new_capacity * sizeof(*params->data));
-        assert(new_data && "Buy more RAM LOL!");
-        memcpy(new_data, params->data, params->count * sizeof(*params->data));
-        params->data = new_data;
-        params->capacity = new_capacity;
-    }
-
-    params->data[params->count++] = param;
-}
-
-void push_expr_to_expr_list(Arena *arena, Expr_List *list, Expr expr)
-{
-    if(list->count >= list->capacity) {
-        size_t new_capacity = list->capacity * 2;
-        if(new_capacity == 0) new_capacity = 32;
-        void *new_data = arena_alloc(arena, new_capacity * sizeof(*list->data));
-        assert(new_data && "buy more ram lol!");
-        memcpy(new_data, list->data, list->count * sizeof(*list->data));
-        list->data = new_data;
-        list->capacity = new_capacity;
-    }
-
-    list->data[list->count++] = expr;
-}
-
-void push_stmt_to_block(Arena *arena, Block *block, Stmt stmt)
-{
-    if(block->count >= block->capacity) {
-        size_t new_capacity = block->capacity * 2;
-        if(new_capacity == 0) new_capacity = 32;
-        void *new_data = arena_alloc(arena, new_capacity * sizeof(*block->data));
-        assert(new_data && "buy more ram lol!");
-        memcpy(new_data, block->data, block->count * sizeof(*block->data));
-        block->data = new_data;
-        block->capacity = new_capacity;
-    }
-
-    block->data[block->count++] = stmt;
-}
-
-void push_fdef_to_module(Arena *arena, Module *module, Func_Def fdef)
-{
-    if(module->functions.count >= module->functions.capacity) {
-        size_t new_capacity = module->functions.capacity * 2;
-        if(new_capacity == 0) new_capacity = 32;
-        void *new_data = arena_alloc(arena, new_capacity * sizeof(*module->functions.data));
-        assert(new_data && "buy more ram lol!");
-        memcpy(new_data, module->functions.data, module->functions.count * sizeof(*module->functions.data));
-        module->functions.data = new_data;
-        module->functions.capacity = new_capacity;
-    }
-
-    module->functions.data[module->functions.count++] = fdef;
-}
-
 #define DUMP_PREFIX ' '
 #define DUMP(depth, ...) prefix_print(DUMP_PREFIX, depth, __VA_ARGS__)
-
-#include <stdio.h>
 void dump_func_def(const Func_Def *func_def, size_t depth)
 {
     DUMP(depth, "Function Definition: "SV_FMT"\n", SV_ARGV(func_def->name));

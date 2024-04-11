@@ -1,5 +1,4 @@
 #include "elysia.h"
-#include "elysia_ast.h"
 #include "elysia_types.h"
 #include <stdarg.h>
 #include <stdlib.h>
@@ -83,8 +82,6 @@ Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b)
     }
 }
 
-#define DATA_TYPE_FMT "%s"SV_FMT"%s"
-#define DATA_TYPE_ARGV(dt) ((dt)->is_ptr ? "*" : ""), SV_ARGV((dt)->name), ((dt)->is_array ? "[]" : "")
 
 void compilation_type_error(Location at, const Data_Type *expectation, const Data_Type *reality, const char *additional, ...)
 {
@@ -103,3 +100,4 @@ void compilation_type_error(Location at, const Data_Type *expectation, const Dat
     va_end(args);
     exit(EXIT_FAILURE);
 }
+

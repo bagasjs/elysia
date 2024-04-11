@@ -1,5 +1,4 @@
 #include "elysia.h"
-#include "elysia_ast.h"
 #include "elysia_types.h"
 #include "sv.h"
 #include "elysia_compiler.h"
@@ -65,24 +64,21 @@ void eval_stmt(Evaluated_Module *module, Evaluated_Fn *fn, Scope *scope, const S
                 size_t addr = scope->stack_usage;
                 Data_Type variable_type = eval_expr(module, scope, &stmt.as.var_init.value);
                 if(!stmt.as.var_init.infer_type) {
-                    if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
-                        compilation_type_error(stmt.loc, &variable_type, &stmt.as.var_init.type, 
-                                "while assigning value to variable `"SV_FMT"`", SV_ARGV(stmt.as.var_init.name));
+                    if(compare_data_type(&stmt.as.var_init.type, &variable_type) != DATA_TYPE_CMP_EQUAL) {
+                        compilation_type_error(stmt.loc, &stmt.as.var_init.type, &variable_type,
+                                "while initializing variable `"SV_FMT"`", SV_ARGV(stmt.as.var_init.name));
                     }
                 }
                 size_t variable_size = 0;
                 variable_size = get_data_type_size(&variable_type);
                 scope->stack_usage += variable_size;
-                // printf("Variable "SV_FMT" with %s type "SV_FMT" with size %zu\n", 
-                //         SV_ARGV(stmt.as.var_init.name), variable_type.is_native ? "native" : "non-native", 
-                //         SV_ARGV(variable_type.name), variable_size);
                 emplace_var_to_scope(scope, stmt.as.var_init.name, variable_type, addr);
             } break;
         case STMT_VAR_ASSIGN:
             {
                 const Evaluated_Var *var = get_var_from_scope(scope, stmt.as.var_assign.name);
                 Data_Type variable_type = eval_expr(module, scope, &stmt.as.var_assign.value);
-                if(compare_data_type(&variable_type, &stmt.as.var_init.type) != DATA_TYPE_CMP_EQUAL) {
+                if(compare_data_type(&variable_type, &var->type) != DATA_TYPE_CMP_EQUAL) {
                     compilation_type_error(stmt.loc, &variable_type, &var->type, " while assigning value to variable "SV_FMT, 
                             SV_ARGV(stmt.as.var_assign.name));
                 }
@@ -104,7 +100,7 @@ void eval_stmt(Evaluated_Module *module, Evaluated_Fn *fn, Scope *scope, const S
             } break;
         default:
             {
-                fatal("Unreachable");
+                fatal("Unreachable (eval_stmt)");
             } break;
     }
 }
@@ -163,8 +159,8 @@ Data_Type eval_expr(Evaluated_Module *module, const Scope *scope, const Expr *ex
                             compilation_error(expr->loc, "Failed to evaluate expression's result data type\n");
                             compilation_failure();
                         } break;
-                result = leftdt;
                 }
+                result = leftdt;
             } break;
         case EXPR_VAR_READ:
             {
