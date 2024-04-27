@@ -19,6 +19,8 @@ typedef enum {
     // Keywords
     TOKEN_FUNCTION, TOKEN_RETURN, TOKEN_VAR, TOKEN_IF, TOKEN_ELSE,
     TOKEN_WHILE, TOKEN_BREAK, TOKEN_CONTINUE,
+
+    TOKEN_AS, TOKEN_STRUCT, TOKEN_TYPE,
 } Token_Type;
 
 typedef struct {

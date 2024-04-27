@@ -1,3 +1,8 @@
+type Window struct {
+    x: u32,
+    y: u32,
+};
+
 fn main(): i32 { 
     var x = 10;
     var y = 10 + 10;

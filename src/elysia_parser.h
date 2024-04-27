@@ -16,12 +16,13 @@ typedef enum {
 typedef enum {
     EXPR_UNKNOWN = 0,
     EXPR_INTEGER_LITERAL, EXPR_STRING_LITERAL, EXPR_BOOL_LITERAL, EXPR_FLOAT_LITERAL,
-    EXPR_FUNCALL, EXPR_VAR_READ, EXPR_BINARY_OP,
+    EXPR_TYPECAST, EXPR_FUNCALL, EXPR_VAR_READ, EXPR_BINARY_OP,
 
     COUNT_EXPRS,
 } Expr_Type;
 
 typedef struct Expr Expr;
+typedef struct Expr_Type_Cast Expr_Type_Cast;
 typedef struct Expr_Var_Read Expr_Var_Read;
 typedef struct Expr_Binary_Op Expr_Binary_Op;
 typedef struct Expr_Func_Call Expr_Func_Call;
@@ -47,10 +48,12 @@ union Expr_As {
     String_View literal_str;
     bool literal_bool;
     int64_t literal_int;
+    double  literal_float;
 
     Expr_Var_Read var_read;
     Expr_Func_Call func_call;
     Expr_Binary_Op *binop;
+    Expr_Type_Cast *type_cast;
 };
 
 struct Expr {
@@ -64,6 +67,11 @@ struct Expr_Binary_Op {
     Binary_Op_Type type;
     Expr left;
     Expr right;
+};
+
+struct Expr_Type_Cast {
+    Data_Type into;
+    Expr value;
 };
 
 typedef enum {

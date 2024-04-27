@@ -106,6 +106,7 @@ Module parse_module(Arena *arena, Lexer *lex)
             if(sv_eq(fdef.name, SV("main"))) {
                 module.main = &module.functions.data[module.functions.count - 1];
             }
+        } else if(token.type == TOKEN_TYPE) {
         } else {
             compilation_error(token.loc, "Expecting function definition found `"SV_FMT"`\n", SV_ARGV(token.value));
             compilation_failure();
@@ -411,6 +412,9 @@ Expr parse_expr(Arena *arena, Lexer *lex)
 
     Expr result = {0};
     switch(token.type) {
+        case TOKEN_AS:
+            {
+            } break;
         case TOKEN_NAME:
             {
                 if(sv_eq(token.value, TRUE_KEYWORD)) {

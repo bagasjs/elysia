@@ -53,6 +53,9 @@ static Token_Info _token_info[] = {
     [TOKEN_WHILE] = { .type = TOKEN_WHILE, .name = "while", .hardcode = "while", .is_binary_op_token = false }, 
     [TOKEN_BREAK] = { .type = TOKEN_BREAK, .name = "break", .hardcode = "break", .is_binary_op_token = false }, 
     [TOKEN_CONTINUE] = { .type = TOKEN_CONTINUE, .name = "continue", .hardcode = "continue", .is_binary_op_token = false },
+    [TOKEN_AS] = { .type = TOKEN_AS, .name = "as", .hardcode = "as", .is_binary_op_token = false },
+    [TOKEN_TYPE] = { .type = TOKEN_TYPE, .name = "type", .hardcode = "type", .is_binary_op_token = false },
+    [TOKEN_STRUCT] = { .type = TOKEN_STRUCT, .name = "struct", .hardcode = "struct", .is_binary_op_token = false },
 };
 
 static const String_View FUNCTION_KEYWORD = SV_STATIC("fn");
@@ -63,6 +66,9 @@ static const String_View WHILE_KEYWORD = SV_STATIC("while");
 static const String_View BREAK_KEYWORD = SV_STATIC("break");
 static const String_View CONTINUE_KEYWORD = SV_STATIC("continue");
 static const String_View VAR_KEYWORD = SV_STATIC("var");
+static const String_View TYPE_KEYWORD = SV_STATIC("type");
+static const String_View STRUCT_KEYWORD = SV_STATIC("struct");
+static const String_View AS_KEYWORD = SV_STATIC("as");
 
 bool is_token_binops(Token_Type type)
 {
@@ -336,6 +342,12 @@ bool cache_next_token(Lexer *lex)
                         cache_token(lex, TOKEN_CONTINUE, result);
                     } else if(sv_eq(result, VAR_KEYWORD)) {
                         cache_token(lex, TOKEN_VAR, result);
+                    } else if(sv_eq(result, TYPE_KEYWORD)) {
+                        cache_token(lex, TOKEN_TYPE, result);
+                    } else if(sv_eq(result, STRUCT_KEYWORD)) {
+                        cache_token(lex, TOKEN_STRUCT, result);
+                    } else if(sv_eq(result, AS_KEYWORD)) {
+                        cache_token(lex, TOKEN_AS, result);
                     } else {
                         cache_token(lex, TOKEN_NAME, result);
                     }

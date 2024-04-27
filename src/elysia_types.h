@@ -72,6 +72,10 @@ void compilation_type_error(Location at, const Data_Type *expectation, const Dat
 Native_Type_Info get_native_type_info(Native_Type type);
 Native_Type_Info *find_native_type_info_by_name(String_View name);
 
+void set_data_type(int index, Data_Type type);
+Data_Type get_data_type(int index);
+int find_data_type(const char *name);
+
 void dump_data_type(FILE *f, const Data_Type *type);
 void dump_parsed_type(const Data_Type *type);
 Data_Type_Cmp_Result compare_data_type(const Data_Type *a, const Data_Type *b);
